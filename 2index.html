@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>拼图Ultimate (Pro Max)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        /* 基础样式重置 */
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background-color: #F2F2F7;
+            color: #000000;
+            -webkit-tap-highlight-color: transparent;
+            padding-bottom: 200px;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* iOS风格卡片容器 */
+        .ios-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+            margin-bottom: 20px;
+        }/* 列表项分割线 */
+        .ios-divide > div:not(:last-child), 
+        .ios-divide > label:not(:last-child) { border-bottom: 0.5px solid #C6C6C8; }
+        
+        input[type=number], select, input[type=text] { appearance: none; -webkit-appearance: none; background: transparent; }
+        
+        /* 滑动条样式 */
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; height: 24px; margin: 0; padding: 0; cursor: pointer; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; background: #E5E5EA; border-radius: 2px; border: none; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 22px; width: 22px; border-radius: 50%; background: #ffffff; box-shadow: 0 2px 5px rgba(0,0,0,0.15); border: 0.5px solid rgba(0,0,0,0.04); margin-top: -9px; transition: transform 0.1s; }
+        input[type=range]:active::-webkit-slider-thumb { transform: scale(1.1); }
+
+        /* 模态框与动画 */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 100; display: none; align-items: center; justify-content: center; }
+        .checkered-bg { background-color: #eee; background-image: linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%); background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px; }
+        .action-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: #F2F2F7; border-top-left-radius: 16px; border-top-right-radius: 16px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); z-index: 101; padding: 20px; padding-bottom: 40px; }
+        .action-sheet.show { transform: translateY(0); }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head><body class="antialiased"><header class="sticky top-0 z-50 bg-[#F2F2F7]/90 backdrop-blur-xl border-b border-gray-200/50 supports-[backdrop-filter]:bg-[#F2F2F7]/60">
+        <div class="max-w-2xl mx-auto px-5 py-3 flex justify-between items-center h-[52px]">
+            <h1 class="text-[22px] font-bold tracking-tight text-black">拼图排序<span class="text-xs font-normal text-white bg-black px-1.5 py-0.5 rounded ml-1">Ultimate</span></h1>
+            <button onclick="document.getElementById('fileInput').click()" class="bg-white text-[#007AFF] text-[15px] font-bold px-4 py-1.5 rounded-full shadow-sm active:bg-gray-100 transition flex items-center gap-1">
+                <svg class="w-4 h-4 stroke-[3px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
+                添加
+            </button>
+            <input type="file" id="fileInput" multiple accept="image/*" class="hidden" onchange="handleFiles(this.files)">
+            <input type="file" id="replaceInput" accept="image/*" class="hidden" onchange="handleReplaceAction(this.files)">
+            <input type="file" id="stickerInput" accept="image/*" class="hidden" onchange="handleStickerFile(this.files)">
+        </div>
+    </header>        <main class="max-w-2xl mx-auto px-4 pt-4 relative"><div id="progressToast" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) -translate-y-[200%] opacity-0 pointer-events-none">
+            <div class="bg-white/90 backdrop-blur-xl text-gray-900 rounded-full shadow-lg flex items-center py-3 pl-5 pr-2 gap-3 border border-gray-200/50 min-w-[240px] max-w-[90vw]">
+                
+                <div class="flex-1 flex flex-col justify-center min-w-0">
+                    <div class="flex items-center justify-between mb-1">
+                        <span id="progressText" class="text-[15px] font-bold leading-tight truncate">准备中...</span>
+                        <span id="progressDetail" class="text-[12px] text-gray-500 font-mono ml-3">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                        <div id="progressBar" class="bg-[#007AFF] h-full w-0 transition-all duration-300 ease-out"></div>
+                    </div>
+                </div>
+
+                <button onclick="cancelProcess()" class="pointer-events-auto w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 active:scale-90 transition text-gray-500 hover:text-gray-900 shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+        </div><div class="ios-card p-4">
+            <div class="flex justify-between items-center mb-3">
+                <span class="text-[13px] text-gray-500 uppercase font-medium pl-1">已导入 <span id="countBadge">0</span> 张</span>
+                <button onclick="clearAll()" class="text-[#FF3B30] text-[13px] active:opacity-50 transition hidden" id="clearBtn">清空</button>
+            </div>
+            <div id="imageGrid" class="grid grid-cols-4 gap-2 overflow-y-auto max-h-[280px] min-h-[100px] no-scrollbar">
+                <div id="emptyState" class="col-span-full flex flex-col items-center justify-center py-8 space-y-3">
+                    <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    </div>
+                    <span class="text-gray-400 text-sm">导入图片 (点击图片可替换/删除)</span>
+                </div>
+            </div>
+        </div>
+
+<div class="mb-2 pl-4 text-[13px] text-gray-500 uppercase font-medium">布局设置</div>
+        <div class="ios-card ios-divide">
+            <div class="p-4 bg-white active:bg-gray-50 transition">
+                <div class="flex items-center justify-between">
+                    <span class="text-[17px]">列数 (横向)</span>
+                    <div class="flex items-center bg-[#767680]/10 rounded-md px-3 py-1.5">
+                        <input type="number" id="cols" value="3" class="w-12 text-center text-[17px] font-medium focus:outline-none">
+                        <span class="text-gray-500 text-xs ml-1">列</span>
+                    </div>
+                </div>
+                <div class="text-[11px] text-gray-400 mt-2 leading-tight">
+                    * 设置横向排列几张图，行数会自动计算。<br>
+                    * 例如：100张图设为4列，系统将自动生成25行。
+                    
+                   （其实可以忽略这个，在导出与分组那设置列就好了）
+                </div>
+            </div>
+
+            <input type="hidden" id="gap" value="0"><div class="flex items-center justify-between p-4 bg-white active:bg-gray-50 transition relative">
+                <span class="text-[17px]">画布比例</span>
+                <div class="flex items-center gap-2">
+                    <select id="aspectRatio" onchange="toggleCustomRatio()" class="text-[#007AFF] text-[17px] pr-6 bg-transparent focus:outline-none text-right appearance-none cursor-pointer dir-rtl">
+                        <option value="0.5625">9:16 手机全屏</option>
+                        <option value="0.75">3:4 海报</option>
+                        <option value="1">1:1 正方形</option>
+                        <option value="1.333">4:3 照片</option>
+                        <option value="custom">自定义...</option>
+                    </select>
+                </div>
+            </div>
+            <div id="customRatioBox" class="hidden p-4 bg-gray-50 flex items-center justify-end gap-3 border-t border-gray-100">
+                <input type="number" id="customW" placeholder="宽" class="bg-white border rounded px-2 py-1 text-center w-20 text-sm" value="1000">
+                <span class="text-gray-400">:</span>
+                <input type="number" id="customH" placeholder="高" class="bg-white border rounded px-2 py-1 text-center w-20 text-sm" value="1500">
+            </div>
+        </div><div class="mb-2 pl-4 text-[13px] text-gray-500 uppercase font-medium">序号标注</div>
+        <div class="ios-card ios-divide">
+            <div class="flex items-center justify-between p-4 bg-white">
+                <span class="text-[17px]">显示序号</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="showNum" checked class="sr-only peer">
+                    <div class="w-[51px] h-[31px] bg-[#E9E9EA] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-[27px] after:w-[27px] after:shadow-sm after:transition-all peer-checked:bg-[#34C759]"></div>
+                </label>
+            </div><div class="flex items-center justify-between p-4 bg-white active:bg-gray-50 transition">
+                <span class="text-[17px]">起始数值</span>
+                <input type="number" id="startNumber" value="1" class="text-right text-[#007AFF] text-[17px] focus:outline-none w-20 bg-gray-50 rounded px-2 py-1" placeholder="1">
+            </div>
+            <div class="flex items-center justify-between p-4 bg-white active:bg-gray-50 transition">
+                <span class="text-[17px]">字号大小</span>
+                <input type="number" id="fontSize" value="350" class="text-right text-[#007AFF] text-[17px] focus:outline-none w-20" placeholder="150">
+            </div>
+            <div class="flex items-center justify-between p-4 bg-white active:bg-gray-50 transition">
+                <span class="text-[17px]">位置</span>
+                <select id="fontPos" class="text-[#007AFF] text-[17px] pr-6 bg-transparent focus:outline-none appearance-none dir-rtl">
+                    <option value="bottom-center">底部居中</option>
+                    <option value="bottom-left">底部左侧</option>
+                    <option value="bottom-right">底部右侧</option>
+                    <option value="center">正中间</option>
+                    <option value="top-left">左上角</option>
+                    <option value="top-right">右上角</option>
+                </select>
+            </div>
+        </div><div class="mb-2 pl-4 text-[13px] text-gray-500 uppercase font-medium mt-6">导出与分组策略</div>
+        <div class="px-1 mb-3">
+            <div class="bg-[#767680]/15 p-1 rounded-lg flex relative">
+                <div id="mode-indicator" class="absolute left-1 top-1 bottom-1 w-[calc(50%-4px)] bg-white rounded-md shadow-sm transition-all duration-300"></div>
+                <button onclick="switchMode('small')" id="btn-small" class="flex-1 relative z-10 text-[13px] font-medium py-1.5 text-center transition-colors">100张以下 (分组)</button>
+                <button onclick="switchMode('large')" id="btn-large" class="flex-1 relative z-10 text-[13px] font-medium py-1.5 text-center transition-colors text-gray-500">100张以上 (后台)</button>
+            </div>
+        </div><div id="group-panel-small" class="ios-card ios-divide mb-6">
+             <div class="p-4 bg-white">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-[17px] font-bold">自定义分组导出</span>
+                    <span class="text-xs text-[#007AFF] font-medium bg-[#007AFF]/10 px-2 py-0.5 rounded">排序优先</span>
+                </div>
+                <div class="text-[11px] text-gray-400 leading-tight mb-4">
+                    * 适用于少于100张的精细化分组。
+                    * 图片将按上方设置的“列数”排序，然后按下方设置被切分为多组导出。
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                         <label class="text-[11px] text-gray-500 block mb-1">每组列数</label>
+                         <input type="number" id="small_cols" placeholder="如: 3" class="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-center text-sm font-bold text-[#007AFF] focus:border-[#007AFF] outline-none" oninput="calculateSmallBatch()">
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                         <label class="text-[11px] text-gray-500 block mb-1">每组行数</label>
+                         <input type="number" id="small_rows" placeholder="如: 5" class="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-center text-sm font-bold text-[#007AFF] focus:border-[#007AFF] outline-none" oninput="calculateSmallBatch()">
+                    </div>
+                </div>
+
+                <div class="mt-3 text-[11px] text-gray-500 bg-[#F2F2F7] p-2 rounded flex items-center gap-2" id="small_hint">
+                    <span class="font-bold">Waiting...</span>
+                    <span>请设置行和列以预览分组结果</span>
+                </div>
+            </div>             <div class="flex items-center justify-between p-4 bg-white border-t border-gray-100">
+                <span class="text-[17px]">导出画质</span>
+                <div class="flex items-center gap-2">
+                    <input type="number" id="customQ_small" min="30" max="100" value="90" class="hidden bg-gray-100 rounded px-2 py-1 text-center w-14 text-[15px] font-bold text-[#007AFF] outline-none" placeholder="90" onchange="validateQualityInput(this)">
+                    <span id="customQ_unit_small" class="hidden text-xs text-gray-500 mr-1">%</span>
+                    <select id="exportQuality_small" onchange="toggleQualityInput('small')" class="text-[#007AFF] text-[15px] bg-transparent focus:outline-none text-right dir-rtl cursor-pointer">
+                        <option value="0.95">高清 (JPEG 95%)</option>
+                        <option value="0.80">标准压缩 (JPEG 80%)</option>
+                        <option value="1.0">原图无损 (PNG)</option>
+                        <option value="custom">自定义...</option>
+                    </select>
+                </div>
+            </div>
+        </div><div id="group-panel-large" class="ios-card ios-divide mb-6 hidden">
+            <div class="p-4 bg-white">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-[17px] font-bold">后台分组处理</span>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="imagesPerBatch" value="50" class="bg-gray-100 rounded px-2 py-1 text-center w-16 text-[15px] font-bold text-[#007AFF]" onchange="validateBatchInput()">
+                        <span class="text-xs text-gray-400">张/组</span>
+                    </div>
+                </div>
+                <div class="text-[11px] text-gray-400 leading-tight">
+                    *导出的列数=您一开始在最上面填写的“列数（横向）”，适用于100张以上拼图或者后期分组导出。
+                   例: 填9张/组，可按你所填的列数9张/组一张张导出。建议合理填写，否则拼图可能会留空白。
+                </div>
+            </div>
+            <div class="p-4 bg-gray-50 border-t border-gray-100">
+                <div class="text-[13px] font-medium text-gray-800 mb-3 flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                    自定义导出布局 (可选)
+                </div>
+                <div class="flex gap-4 mb-2">
+                    <div class="flex-1">
+                        <label class="text-[11px] text-gray-500 block mb-1">导出列数</label>
+                        <input type="number" id="exportCols" placeholder="同预览" class="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-center text-sm focus:border-[#007AFF] outline-none" oninput="calculateBatchSize()">
+                    </div>
+                    <div class="flex-1">
+                        <label class="text-[11px] text-gray-500 block mb-1">导出行数/组</label>
+                        <input type="number" id="exportRows" placeholder="自动" class="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-center text-sm focus:border-[#007AFF] outline-none" oninput="calculateBatchSize()">
+                    </div>
+                </div>
+                
+                <div class="text-[11px] text-gray-400 bg-white/50 p-2 rounded border border-gray-100 leading-relaxed" id="layoutHint">
+                    <span class="block mb-0.5">* 设置后将按 <b>"列 × 行"</b> 锁定每组张数。</span>
+                    <span>* 例如：设置 3列 × 5行，系统会自动将每组设为 15张。</span>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between p-4 bg-white border-t border-gray-100">
+                <span class="text-[17px]">导出画质</span>
+                <div class="flex items-center gap-2">
+                    <input type="number" id="customQ_large" min="30" max="100" value="90" class="hidden bg-gray-100 rounded px-2 py-1 text-center w-14 text-[15px] font-bold text-[#007AFF] outline-none" placeholder="90" onchange="validateQualityInput(this)">
+                    <span id="customQ_unit_large" class="hidden text-xs text-gray-500 mr-1">%</span>
+                    <select id="exportQuality" onchange="toggleQualityInput('large')" class="text-[#007AFF] text-[15px] bg-transparent focus:outline-none text-right dir-rtl cursor-pointer">
+                        <option value="0.95">高清 (JPEG 95%)</option>
+                        <option value="0.80">标准压缩 (JPEG 80%)</option>
+                        <option value="1.0">原图无损 (PNG)</option>
+                        <option value="custom">自定义...</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+<div class="mb-2 pl-4 text-[13px] text-gray-500 uppercase font-medium">打码 / 贴纸 (拼图后应用)</div>
+        <div class="ios-card ios-divide">
+            <div class="p-4 bg-white">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex flex-col">
+                        <span class="text-[17px] font-bold">目标序号</span>
+                        <span class="text-[10px] text-gray-400">输入数字 (如: 5, 12, 1-3)</span>
+                    </div>
+                    <input type="text" id="maskIndices" placeholder="如: 5, 12" class="text-right text-[#007AFF] text-[17px] focus:outline-none w-40 placeholder-gray-300 bg-gray-50 rounded px-2 py-1">
+                </div>
+
+                <div class="flex p-1 bg-gray-100 rounded-lg mb-4">
+                    <button onclick="switchMaskTab('line')" id="tab-line" class="flex-1 py-1.5 text-xs font-medium rounded-md bg-white shadow text-black transition-all">画线打码</button>
+                    <button onclick="switchMaskTab('image')" id="tab-image" class="flex-1 py-1.5 text-xs font-medium rounded-md text-gray-500 transition-all">图片/贴纸</button>
+                </div>
+
+                <div id="mask-panel-line" class="animate-fade-in">
+                    <div class="flex justify-between items-center pb-3 border-b border-gray-100 mb-3">
+                        <span class="text-sm text-gray-500">形状样式</span>
+                        <div class="flex items-center gap-4 text-sm">
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="lineStyle" value="cross" checked class="accent-[#FF3B30]"> <span>❌ 交叉</span></label>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="lineStyle" value="slash" class="accent-[#FF3B30]"> <span>╱ 斜线</span></label>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center py-2">
+                         <span class="text-sm text-gray-500 w-20">颜色/粗细</span>
+                         <div class="flex items-center flex-1 gap-3">
+                             <input type="color" id="maskColor" value="#FF3B30" class="w-8 h-8 rounded-full border border-gray-200 shrink-0">
+                             <div class="flex-1 h-8 flex items-center"><input type="range" id="maskWidth" min="1" max="20" value="10" class="w-full"></div>
+                         </div>
+                    </div>
+                </div>
+
+                <div id="mask-panel-image" class="hidden animate-fade-in">
+                    <button onclick="document.getElementById('stickerInput').click()" class="w-full py-2 border border-dashed border-gray-300 rounded-lg text-gray-500 text-sm mb-3 active:bg-gray-50">+ 上传遮挡图 (Logo/贴纸)</button>
+                    <div class="flex gap-4 mb-1">
+                        <div class="w-24 h-24 checkered-bg rounded-lg overflow-hidden border border-gray-200 shrink-0 relative cursor-pointer active:scale-95 transition shadow-sm" onclick="enlargeStickerPreview()">
+                            <canvas id="stickerPreviewCanvas" class="w-full h-full object-contain"></canvas>
+                        </div>
+                        <div class="flex-1 flex flex-col justify-center space-y-4">
+                            <div class="flex items-center text-xs text-gray-500"><span class="w-8 text-right mr-3">大小</span> <input type="range" id="stickerSize" min="10" max="200" value="50" class="flex-1"></div>
+                            <div class="flex items-center text-xs text-gray-500"><span class="w-8 text-right mr-3">左右</span> <input type="range" id="stickerX" min="0" max="100" value="50" class="flex-1"></div>
+                            <div class="flex items-center text-xs text-gray-500"><span class="w-8 text-right mr-3">上下</span> <input type="range" id="stickerY" min="0" max="100" value="50" class="flex-1"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-4 pt-0 grid grid-cols-2 gap-3 bg-white pb-4 rounded-b-xl">
+                <button onclick="generateMasked('apply')" class="py-3 rounded-xl bg-[#007AFF]/10 active:bg-[#007AFF]/20 text-[#007AFF] font-bold text-[15px] transition-all flex items-center justify-center gap-1">✨ 生成/更新</button>
+                <button onclick="generateMasked('repack')" class="py-3 rounded-xl bg-[#FF3B30]/10 active:bg-[#FF3B30]/20 text-[#FF3B30] font-bold text-[15px] transition-all flex items-center justify-center gap-1">🔄 剔除并重排</button>
+            </div></div> <div id="resultArea" class="hidden pb-10"><div class="text-center text-gray-400 text-xs mb-3 font-medium">预览结果 (无缝拼接)</div>
+            <div class="ios-card bg-white p-0 shadow-lg overflow-hidden border border-gray-100">
+                <div id="seamlessContainer" class="w-full flex flex-col bg-white"></div>
+            </div>
+            <div class="grid grid-cols-2 gap-3 mt-4">
+                <button onclick="downloadZip()" class="col-span-2 bg-[#34C759] text-white text-[16px] font-bold py-4 rounded-xl shadow-lg active:scale-[0.98] transition flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
+                    <span>打包下载所有分组 (ZIP)</span>
+                </button>
+                <button onclick="combineAndDownload()" class="bg-white text-black border border-gray-200 text-[14px] font-medium py-3 rounded-xl active:scale-95 transition">合并为一张长图</button>
+                <button onclick="downloadAllParts()" class="bg-white text-[#007AFF] border border-gray-200 text-[14px] font-medium py-3 rounded-xl active:scale-95 transition">逐张下载</button>
+            </div>
+        </div>
+
+        <div class="py-10 pb-20 text-center">
+    <div class="space-y-1">
+        <p class="text-xs text-gray-500 font-medium">拼图Ultimate (Pro Max)</p>
+        <p class="text-[10px] text-gray-400">Designed by   ikko</p>
+        
+        <p class="text-[10px] text-gray-400">请不要二传
+        
+发现二传我会删链接 自用的|||</p>
+    </div>
+</div>
+
+    </main><div class="fixed bottom-8 left-0 right-0 px-4 z-40 pointer-events-none">
+        <button onclick="generate()" class="pointer-events-auto w-full max-w-2xl mx-auto bg-white/80 backdrop-blur-md text-black border border-white/40 font-semibold text-[17px] py-3.5 rounded-full shadow-lg active:scale-[0.98] transition flex items-center justify-center gap-2">
+            <span>✨ 开始生成拼图</span>
+        </button>
+    </div>
+
+    
+    <canvas id="canvas" class="hidden"></canvas>
+    <div id="previewModal" class="modal-overlay" onclick="this.style.display='none'">
+        <div class="bg-white p-2 rounded-xl overflow-hidden shadow-2xl relative flex items-center justify-center" style="max-width:90%; max-height:80%;" onclick="event.stopPropagation()">
+            <canvas id="enlargedPreviewCanvas" class="object-contain" style="max-width:100%; max-height:70vh;"></canvas>
+            <button onclick="document.getElementById('previewModal').style.display='none'" class="absolute top-2 right-2 bg-black/50 text-white rounded-full w-8 h-8 flex items-center justify-center">×</button>
+        </div>
+    </div>
+    
+    <div id="imageActionOverlay" class="modal-overlay" onclick="closeImageActions()"></div>
+    <div id="imageActionSheet" class="action-sheet">
+        <div class="text-center text-gray-400 text-sm mb-4 font-medium">图片操作</div>
+        <div class="space-y-3">
+            <button onclick="triggerReplace()" class="w-full bg-white text-[#007AFF] font-bold text-[17px] py-3.5 rounded-xl shadow-sm active:bg-gray-50">替换图片</button>
+            <button onclick="triggerDelete()" class="w-full bg-white text-[#FF3B30] font-bold text-[17px] py-3.5 rounded-xl shadow-sm active:bg-gray-50">删除图片</button>
+        </div>
+        <button onclick="closeImageActions()" class="w-full bg-white text-black font-semibold text-[17px] py-3.5 rounded-xl shadow-sm mt-4 active:bg-gray-50">取消</button>
+    </div><button onclick="toggleHelpModal(true)" class="fixed bottom-28 right-5 z-40 bg-white/90 backdrop-blur shadow-lg border border-gray-200 w-12 h-12 rounded-full flex items-center justify-center text-[#007AFF] active:scale-90 transition-transform">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+</button>
+
+<div id="helpModal" class="modal-overlay z-[110]" onclick="toggleHelpModal(false)">
+    <div class="bg-[#F2F2F7] w-full max-w-lg h-[80vh] rounded-t-2xl md:rounded-2xl flex flex-col overflow-hidden shadow-2xl transform transition-transform translate-y-full md:translate-y-0" id="helpModalContent" onclick="event.stopPropagation()">
+        
+        <div class="bg-white px-4 py-3 flex justify-between items-center border-b border-gray-200">
+            <h3 class="text-[17px] font-bold">使用教程 & 说明</h3>
+            <button onclick="toggleHelpModal(false)" class="bg-gray-100 hover:bg-gray-200 w-8 h-8 rounded-full flex items-center justify-center text-gray-500">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 space-y-3">
+            
+            <div class="ios-card overflow-hidden">
+                <button onclick="toggleHelpItem('help-layout')" class="w-full flex justify-between items-center p-4 bg-white active:bg-gray-50 transition">
+                    <span class="text-[15px] font-bold text-gray-800">1. 基础布局与比例</span>
+                    <svg class="w-4 h-4 text-gray-400 transform transition-transform" id="icon-help-layout" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div id="help-layout" class="hidden px-4 pb-4 text-[13px] text-gray-500 leading-relaxed bg-white border-t border-gray-100 pt-2">
+                    <p class="mb-2"><strong>列数：</strong>决定横向排几张图。行数会根据图片总数自动计算。（其实感觉可以忽视这个，因为如果你这填5，而分组导出那列数填6，会按分组导出的列数来。
+分组导出布局设置优先为原则）</p>
+                    <p class="mb-2"><strong>画布比例：</strong>
+                    <ul class="list-disc pl-4 space-y-1">
+                        <li><b>3:4 / 9:16：</b>适合手机壁纸或长海报。</li>
+                        <li><b>1:1：</b>适合正方形排版。</li>
+                        <li><b>自定义：</b>如果有特殊尺寸需求，可选自定义输入宽和高。</li>
+                    </ul>
+                    </p>
+                </div>
+            </div>
+
+            <div class="ios-card overflow-hidden">
+                <button onclick="toggleHelpItem('help-num')" class="w-full flex justify-between items-center p-4 bg-white active:bg-gray-50 transition">
+                    <span class="text-[15px] font-bold text-gray-800">2. 序号标注设置</span>
+                    <svg class="w-4 h-4 text-gray-400 transform transition-transform" id="icon-help-num" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div id="help-num" class="hidden px-4 pb-4 text-[13px] text-gray-500 leading-relaxed bg-white border-t border-gray-100 pt-2">
+                    <p class="mb-2">系统会自动给每张图片打上数字。</p>
+                    <ul class="list-disc pl-4 space-y-1">
+                        <li><b>起始数值：</b>默认从1开始。如果这是第二组拼图，你可以设为51，接上一组的顺序。</li>
+                        <li><b>字号与位置：</b>觉得数字太小或挡住主体，可调整大小或将其移到角落。</li>
+                    </ul>
+                </div>
+            </div>
+
+                        <div class="ios-card overflow-hidden">
+                <button onclick="toggleHelpItem('help-export')" class="w-full flex justify-between items-center p-4 bg-white active:bg-gray-50 transition">
+                    <span class="text-[15px] font-bold text-gray-800">3. 分组与导出策略</span>
+                    <svg class="w-4 h-4 text-gray-400 transform transition-transform" id="icon-help-export" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div id="help-export" class="hidden px-4 pb-4 text-[13px] text-gray-500 leading-relaxed bg-white border-t border-gray-100 pt-2">
+                    <p class="mb-3">根据图片数量选择不同的模式：</p>
+                    <div class="bg-gray-50 p-2 rounded mb-2">
+                        <span class="font-bold text-gray-800 block mb-1">模式 A：100张以下 (分组)</span>
+                        此模式下，你可以精确控制每一张大图里包含几行几列。<br>
+                        <span class="text-gray-500 text-xs">例：设置3列5行，系统就会每15张图切成一张大图导出。</span>
+                    </div>
+                    <div class="bg-gray-50 p-2 rounded">
+                        <span class="font-bold text-gray-800 block mb-1">模式 B：100张以上 (后台)</span>
+                        适合超大量图片。为了防止浏览器卡死，系统会采用“每组X张”的方式分批处理。<br>
+                        <span class="text-xs text-gray-400">建议保持默认50张/组，生成后使用“打包下载ZIP”。
+（其实我感觉这两可以合并，都是可以自定义多少张导出，都是一个原理，没什么影响，好像两百张也可以用模式A，不想改了。自己捣鼓用吧）</span>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="ios-card overflow-hidden">
+                <button onclick="toggleHelpItem('help-mask')" class="w-full flex justify-between items-center p-4 bg-white active:bg-gray-50 transition">
+                    <span class="text-[15px] font-bold text-gray-800">4. 打码与贴纸</span>
+                    <svg class="w-4 h-4 text-gray-400 transform transition-transform" id="icon-help-mask" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div id="help-mask" class="hidden px-4 pb-4 text-[13px] text-gray-500 leading-relaxed bg-white border-t border-gray-100 pt-2">
+                    <p class="mb-2">生成拼图后，如果你想遮盖某些图片（如已售出）：</p>
+                    <ol class="list-decimal pl-4 space-y-1">
+                        <li>在<b>“目标序号”</b>框内输入数字（如：5, 12-15）。</li>
+                        <li>选择<b>画线</b>（打红叉）或<b>图片/贴纸</b>（上传Logo遮盖）。</li>
+                        <li>点击<b>“✨ 生成/更新”</b>即可看到效果。</li>
+                        <li>点击<b>“🔄 剔除并重排”</b>会将这些图片直接删除，将剩下的图重新拼接。</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="text-center text-[11px] text-gray-400 py-4">
+                Designed by ikko | 拼图Ultimate
+            </div>
+        </div>
+    </div>
+</div><script>let imagesData = [];
+    let generatedBlobs = [];
+    let stickerImg = null;
+    let currentMaskMode = 'line';
+    let targetImageIndex = -1; 
+    let isCancelled = false;
+    let currentMode = 'small'; // 默认为小数据量分组模式
+
+    const MAX_CANVAS_DIMENSION = 8192;
+
+    // --- 模式切换逻辑 ---
+    function switchMode(mode) {
+        currentMode = mode;
+        const btnSmall = document.getElementById('btn-small');
+        const btnLarge = document.getElementById('btn-large');
+        const panelSmall = document.getElementById('group-panel-small');
+        const panelLarge = document.getElementById('group-panel-large');
+        const indicator = document.getElementById('mode-indicator');
+
+        if (mode === 'small') {
+            btnSmall.classList.remove('text-gray-500');
+            btnLarge.classList.add('text-gray-500');
+            panelSmall.classList.remove('hidden');
+            panelLarge.classList.add('hidden');
+            indicator.style.transform = 'translateX(0)';
+            calculateSmallBatch();
+        } else {
+            btnSmall.classList.add('text-gray-500');
+            btnLarge.classList.remove('text-gray-500');
+            panelSmall.classList.add('hidden');
+            panelLarge.classList.remove('hidden');
+            indicator.style.transform = 'translateX(100%)';
+        }
+    }
+
+    // --- 小分组计算逻辑 ---
+    function calculateSmallBatch() {
+        if(currentMode !== 'small') return;
+        const cols = parseInt(document.getElementById('small_cols').value) || 0;
+        const rows = parseInt(document.getElementById('small_rows').value) || 0;
+        const hint = document.getElementById('small_hint');
+        const total = imagesData.length;
+        
+        if (cols > 0 && rows > 0) {
+            const batchSize = cols * rows;
+            const groups = Math.ceil(total / batchSize);
+            hint.innerHTML = `<span class="text-[#007AFF] font-bold">✅ 已就绪:</span> <span>将分为 <b>${groups}</b> 组，每组 <b>${batchSize}</b> 张 (${cols}列x${rows}行)</span>`;
+            hint.className = "mt-3 text-[11px] bg-[#007AFF]/5 text-[#007AFF] border border-[#007AFF]/20 p-2 rounded flex items-center gap-2";
+        } else {
+            hint.innerHTML = `<span class="font-bold">Waiting...</span><span>请设置行和列以预览分组结果</span>`;
+            hint.className = "mt-3 text-[11px] text-gray-500 bg-[#F2F2F7] p-2 rounded flex items-center gap-2";
+        }
+    }function switchMaskTab(mode) {
+        currentMaskMode = mode;
+        const lineTab = document.getElementById('tab-line');
+        const imgTab = document.getElementById('tab-image');
+        lineTab.className = mode==='line' ? 'flex-1 py-1.5 text-xs font-medium rounded-md bg-white shadow text-black transition-all' : 'flex-1 py-1.5 text-xs font-medium rounded-md text-gray-500 transition-all';
+        imgTab.className = mode==='image' ? 'flex-1 py-1.5 text-xs font-medium rounded-md bg-white shadow text-black transition-all' : 'flex-1 py-1.5 text-xs font-medium rounded-md text-gray-500 transition-all';
+        document.getElementById('mask-panel-line').style.display = mode==='line' ? 'block' : 'none';
+        document.getElementById('mask-panel-image').style.display = mode==='image' ? 'block' : 'none';
+        if(mode === 'image') updateStickerPreview();
+    }
+
+    // --- 优化的进度条控制逻辑 (顶部悬浮条) ---
+    function showLoading(show, text='处理中...') {
+        const toast = document.getElementById('progressToast');
+        const textField = document.getElementById('progressText');
+        const detailField = document.getElementById('progressDetail');
+        const bar = document.getElementById('progressBar');
+
+        if (show) { 
+            isCancelled = false;
+            if(toast) {
+                toast.classList.remove('-translate-y-[200%]', 'opacity-0', 'pointer-events-none');
+                toast.classList.add('translate-y-0', 'opacity-100');
+            }
+            if(textField) textField.innerText = text;
+            if(bar && detailField) {
+                if(text.includes('初始化')) {
+                    bar.style.width = '5%';
+                    detailField.innerText = 'Start';
+                } else if (text.includes('生成第')) {
+                    try {
+                        const parts = text.match(/(\d+)\s*\/\s*(\d+)/);
+                        if(parts && parts.length === 3) {
+                            const current = parseInt(parts[1]);
+                            const total = parseInt(parts[2]);
+                            const percent = Math.round((current / total) * 100);
+                            bar.style.width = `${percent}%`;
+                            detailField.innerText = `${percent}%`;
+                        }
+                    } catch(e) {}
+                }
+            }
+        } else { 
+            if(bar) bar.style.width = '100%';
+            if(detailField) detailField.innerText = '100%';
+            setTimeout(() => {
+                if(toast) {
+                    toast.classList.add('-translate-y-[200%]', 'opacity-0', 'pointer-events-none');
+                    toast.classList.remove('translate-y-0', 'opacity-100');
+                }
+                setTimeout(() => { if(bar) bar.style.width = '0%'; }, 500);
+            }, 800);
+        }
+    }
+    
+    function cancelProcess() {
+        const toast = document.getElementById('progressToast');
+        if(toast) {
+            toast.classList.add('scale-95');
+            setTimeout(() => toast.classList.remove('scale-95'), 100);
+        }
+        if(confirm('确定要停止当前任务吗？')) {
+            isCancelled = true;
+            const textField = document.getElementById('progressText');
+            if(textField) textField.innerText = "正在取消...";
+            setTimeout(() => showLoading(false), 500);
+        }
+    }function toggleCustomRatio() { document.getElementById('customRatioBox').style.display = (document.getElementById('aspectRatio').value === 'custom') ? 'flex' : 'none'; }
+    function validateBatchInput() { let val = parseInt(document.getElementById('imagesPerBatch').value); if(val < 1) document.getElementById('imagesPerBatch').value = 1; }
+    
+    function handleFiles(files) {
+        if (!files.length) return;
+        const grid = document.getElementById('imageGrid');
+        const fragment = document.createDocumentFragment();
+        const startIndex = imagesData.length;
+        Array.from(files).forEach((file, i) => {
+            const url = URL.createObjectURL(file);
+            imagesData.push(url);
+            const div = document.createElement('div');
+            div.className = 'relative aspect-square rounded-xl overflow-hidden bg-gray-100 border border-gray-100 thumbnail-item active:opacity-80 transition cursor-pointer';
+            div.innerHTML = `<img src="${url}" class="w-full h-full object-cover pointer-events-none">`;
+            div.onclick = () => openImageActions(startIndex + i);
+            fragment.appendChild(div);
+        });
+        grid.appendChild(fragment);
+        refreshUI();
+        calculateSmallBatch();
+        document.getElementById('fileInput').value = '';
+    }
+
+    function openImageActions(index) { targetImageIndex = index; document.getElementById('imageActionOverlay').style.display = 'block'; setTimeout(() => document.getElementById('imageActionSheet').classList.add('show'), 10); }
+    function closeImageActions() { document.getElementById('imageActionSheet').classList.remove('show'); setTimeout(() => document.getElementById('imageActionOverlay').style.display = 'none', 300); }
+    function triggerReplace() { document.getElementById('replaceInput').click(); closeImageActions(); }
+    function handleReplaceAction(files) {
+        if(!files.length || targetImageIndex === -1) return;
+        const url = URL.createObjectURL(files[0]);
+        imagesData[targetImageIndex] = url;
+        const item = document.querySelectorAll('.thumbnail-item img')[targetImageIndex];
+        if(item) item.src = url;
+        document.getElementById('replaceInput').value = '';
+    }
+    function triggerDelete() {
+        if(confirm('确定删除?')) {
+            imagesData.splice(targetImageIndex, 1);
+            const grid = document.getElementById('imageGrid');
+            grid.innerHTML = '<div id="emptyState" class="col-span-full py-8 text-center" style="display:none"><span class="text-gray-400">导入图片</span></div>';
+            const fragment = document.createDocumentFragment();
+            imagesData.forEach((url, i) => {
+                const div = document.createElement('div');
+                div.className = 'relative aspect-square rounded-xl overflow-hidden bg-gray-100 border border-gray-100 thumbnail-item active:opacity-80 transition cursor-pointer';
+                div.innerHTML = `<img src="${url}" class="w-full h-full object-cover pointer-events-none">`;
+                div.onclick = () => openImageActions(i);
+                fragment.appendChild(div);
+            });
+            grid.appendChild(fragment);
+            refreshUI();
+            calculateSmallBatch();
+        }
+        closeImageActions();
+    }
+    function refreshUI() {
+        document.getElementById('countBadge').innerText = imagesData.length;
+        document.getElementById('emptyState').style.display = imagesData.length ? 'none' : 'flex';
+        document.getElementById('clearBtn').style.display = imagesData.length ? 'block' : 'none';
+        updateStickerPreview();
+        calculateBatchSize(); // For large mode
+    }
+    function clearAll() { if(confirm('确定清空?')) { imagesData=[]; refreshUI(); document.getElementById('imageGrid').innerHTML = ''; document.getElementById('imageGrid').appendChild(document.getElementById('emptyState')); document.getElementById('emptyState').style.display = 'flex'; } }
+    
+    function handleStickerFile(files) { if(!files.length) return; const img = new Image(); img.onload = () => { stickerImg = img; updateStickerPreview(); }; img.src = URL.createObjectURL(files[0]); }
+    function getCurrentRatio() {
+        let ratio = parseFloat(document.getElementById('aspectRatio').value);
+        if(isNaN(ratio) || document.getElementById('aspectRatio').value === 'custom') {
+            const cw = parseInt(document.getElementById('customW').value) || 1000;
+            const ch = parseInt(document.getElementById('customH').value) || 1500;
+            ratio = cw / ch;
+        }
+        return ratio;
+    }
+    function updateStickerPreview() {
+        const canvas = document.getElementById('stickerPreviewCanvas'); const ctx = canvas.getContext('2d');
+        const w = canvas.width = 300; const h = canvas.height = 300;
+        ctx.clearRect(0,0,w,h);
+        if (imagesData.length > 0) {
+            const bgImg = new Image(); bgImg.src = imagesData[0];
+            if(bgImg.complete) drawPreviewContent(ctx, w, h, bgImg); else bgImg.onload = () => drawPreviewContent(ctx, w, h, bgImg);
+        } else { ctx.fillStyle = '#f0f0f0'; ctx.fillRect(0,0,w,h); ctx.fillStyle = '#ccc'; ctx.textAlign = 'center'; ctx.fillText('无图', w/2, h/2); }
+    }
+    function drawPreviewContent(ctx, w, h, bgImg) {
+        const sRatio = bgImg.width / bgImg.height; const cRatio = w / h;
+        if(sRatio > cRatio) ctx.drawImage(bgImg, (bgImg.width - bgImg.height*cRatio)/2, 0, bgImg.height*cRatio, bgImg.height, 0, 0, w, h);
+        else ctx.drawImage(bgImg, 0, (bgImg.height - bgImg.width/cRatio)/2, bgImg.width, bgImg.width/cRatio, 0, 0, w, h);
+        if (stickerImg) {
+            const sizePct = document.getElementById('stickerSize').value / 100;
+            const xPct = document.getElementById('stickerX').value / 100;
+            const yPct = document.getElementById('stickerY').value / 100;
+            const sw = w * sizePct; const sh = sw * (stickerImg.height / stickerImg.width);
+            ctx.drawImage(stickerImg, (w * xPct) - sw/2, (h * yPct) - sh/2, sw, sh);
+        }
+    }
+    function enlargeStickerPreview() {
+        const modal = document.getElementById('previewModal');
+        const largeCanvas = document.getElementById('enlargedPreviewCanvas');
+        const ratio = getCurrentRatio();
+        const baseW = 600; const baseH = baseW / ratio;
+        largeCanvas.width = baseW; largeCanvas.height = baseH;
+        const ctx = largeCanvas.getContext('2d');
+        if (imagesData.length > 0) {
+            const bgImg = new Image(); bgImg.src = imagesData[0];
+            bgImg.onload = () => { drawPreviewContent(ctx, baseW, baseH, bgImg); modal.style.display = 'flex'; }
+        } else { ctx.fillStyle = '#fff'; ctx.fillRect(0,0,baseW,baseH); modal.style.display = 'flex'; }
+    }    function calculateBatchSize() {
+        if(currentMode === 'small') return;
+        const exCols = parseInt(document.getElementById('exportCols').value);
+        const exRows = parseInt(document.getElementById('exportRows').value);
+        const batchInput = document.getElementById('imagesPerBatch');
+        const hint = document.getElementById('layoutHint');
+        const totalImages = imagesData.length || 0; 
+        if (exCols > 0 && exRows > 0) {
+            const perBatch = exCols * exRows;
+            batchInput.value = perBatch;
+            const batches = totalImages > 0 ? Math.ceil(totalImages / perBatch) : 0;
+            batchInput.disabled = true; batchInput.classList.add('opacity-50');
+            hint.innerHTML = `<div class="text-[#007AFF] font-medium mb-0.5">✅ 锁定布局：${exCols}列 × ${exRows}行 = ${perBatch}张/组</div>`;
+            hint.classList.add('bg-[#007AFF]/5', 'border-[#007AFF]/20');
+        } else {
+            batchInput.disabled = false; batchInput.classList.remove('opacity-50');
+            hint.innerHTML = `<span class="block mb-0.5">* 设置后将按 <b>"列 × 行"</b> 锁定每组张数。</span>`;
+            hint.classList.remove('bg-[#007AFF]/5', 'border-[#007AFF]/20');
+        }
+    }
+
+    // --- 新增：画质控制逻辑 ---
+    function toggleQualityInput(type) {
+        const selectId = type === 'small' ? 'exportQuality_small' : 'exportQuality';
+        const inputId = type === 'small' ? 'customQ_small' : 'customQ_large';
+        const unitId = type === 'small' ? 'customQ_unit_small' : 'customQ_unit_large';
+
+        const val = document.getElementById(selectId).value;
+        const isCustom = val === 'custom';
+        
+        const inputEl = document.getElementById(inputId);
+        const unitEl = document.getElementById(unitId);
+        
+        if (isCustom) {
+            inputEl.classList.remove('hidden');
+            unitEl.classList.remove('hidden');
+        } else {
+            inputEl.classList.add('hidden');
+            unitEl.classList.add('hidden');
+        }
+    }
+
+    function validateQualityInput(el) {
+        let val = parseInt(el.value);
+        if (isNaN(val)) val = 90;
+        // 修改：最小值改为 30
+        if (val < 30) val = 30;
+        if (val > 100) val = 100;
+        el.value = val;
+    }
+async function generate() { await runGeneration('normal'); }
+    async function generateMasked(type) { await runGeneration(type); }
+
+    async function runGeneration(opType) {
+        if (!imagesData.length) return alert('请添加图片');
+        const container = document.getElementById('seamlessContainer');
+        container.innerHTML = ''; generatedBlobs = [];
+        
+        const startNum = parseInt(document.getElementById('startNumber').value) || 1;
+        let targets = [...imagesData];
+        
+        // --- 遮罩目标解析 ---
+        const rawInput = document.getElementById('maskIndices').value;
+        let maskTargets = [];
+        const parts = rawInput.split(/[,，\s]+/);
+        parts.forEach(part => {
+            part = part.trim(); if (!part) return;
+            if (part.includes('-')) {
+                const rangeParts = part.split('-');
+                if (rangeParts.length === 2) {
+                    const s = parseInt(rangeParts[0]); const e = parseInt(rangeParts[1]);
+                    if (!isNaN(s) && !isNaN(e)) { for (let k = Math.min(s,e); k <= Math.max(s,e); k++) maskTargets.push(k); }
+                }
+            } else { const num = parseInt(part); if (!isNaN(num)) maskTargets.push(num); }
+        });
+        if (opType === 'repack') targets = targets.filter((_, i) => !maskTargets.includes(startNum + i));
+
+        // --- 核心逻辑区分 ---
+        let batchSize, finalCols;
+        let quality = 0.95; 
+        let isPng = false;
+        
+        if (currentMode === 'small') {
+            const sCols = parseInt(document.getElementById('small_cols').value) || 3;
+            const sRows = parseInt(document.getElementById('small_rows').value) || 100;
+            finalCols = sCols;
+            batchSize = sCols * sRows;
+            
+            // 获取画质
+            const qVal = document.getElementById('exportQuality_small').value;
+            if (qVal === 'custom') {
+                const customVal = parseInt(document.getElementById('customQ_small').value) || 90;
+                quality = customVal / 100;
+                isPng = false; 
+            } else {
+                quality = parseFloat(qVal);
+                isPng = (quality === 1.0);
+            }
+        } else {
+            batchSize = parseInt(document.getElementById('imagesPerBatch').value) || 50;
+            const customExportCols = parseInt(document.getElementById('exportCols').value);
+            const previewCols = parseInt(document.getElementById('cols').value) || 3;
+            finalCols = (customExportCols > 0) ? customExportCols : previewCols;
+
+            // 获取画质
+            const qVal = document.getElementById('exportQuality').value;
+            if (qVal === 'custom') {
+                const customVal = parseInt(document.getElementById('customQ_large').value) || 90;
+                quality = customVal / 100;
+                isPng = false;
+            } else {
+                quality = parseFloat(qVal);
+                isPng = (quality === 1.0);
+            }
+        }
+
+        const totalBatches = Math.ceil(targets.length / batchSize);
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        showLoading(true, '初始化...');
+        try {
+            for (let b = 0; b < totalBatches; b++) {
+                if (isCancelled) break;
+                showLoading(true, `生成第 ${b+1} / ${totalBatches} 组...`);
+                const currentImgs = targets.slice(b*batchSize, Math.min((b+1)*batchSize, targets.length));
+                
+                const ratio = getCurrentRatio();
+                const gap = parseInt(document.getElementById('gap').value) || 0;
+                
+                let cellW = 1500; 
+                if (finalCols * cellW > MAX_CANVAS_DIMENSION) cellW = Math.floor((MAX_CANVAS_DIMENSION - (finalCols*gap)) / finalCols);
+                let cellH = Math.floor(cellW / ratio);
+                const rows = Math.ceil(currentImgs.length / finalCols);
+
+                await drawAsync(ctx, currentImgs, rows, finalCols, cellW, cellH, gap, b*batchSize, startNum, maskTargets, opType === 'apply');
+                
+                if (isCancelled) break;
+
+                await new Promise(res => canvas.toBlob(blob => {
+                    if (isCancelled) { res(); return; }
+                    generatedBlobs.push(blob);
+                    const img = document.createElement('img'); 
+                    img.src = URL.createObjectURL(blob); img.className = "w-full block"; 
+                    container.appendChild(img); res();
+                }, isPng ? 'image/png' : 'image/jpeg', isPng ? undefined : quality));
+                await new Promise(r => setTimeout(r, 50)); 
+            }
+            if (!isCancelled) { document.getElementById('resultArea').classList.remove('hidden'); document.getElementById('resultArea').scrollIntoView({behavior:'smooth'}); }
+        } catch(e) { console.error(e); if(!isCancelled) alert('错误:'+e.message); }
+        showLoading(false);
+    }    async function drawAsync(ctx, imgs, rows, cols, w, h, gap, globalOffset, startNum, maskIndices, applyMask) {
+        if (isCancelled) return;
+        const canvas = ctx.canvas;
+        canvas.width = cols * w + (cols-1) * gap; canvas.height = rows * h + (rows-1) * gap;
+        ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const showNum = document.getElementById('showNum').checked;
+        const fontSize = parseInt(document.getElementById('fontSize').value);
+        const fontPos = document.getElementById('fontPos').value;
+        const lineStyle = document.querySelector('input[name="lineStyle"]:checked') ? document.querySelector('input[name="lineStyle"]:checked').value : 'cross';
+
+        for (let i = 0; i < imgs.length; i++) {
+            if (isCancelled) return;
+            const r = Math.floor(i / cols); const c = i % cols;
+            const x = c * (w + gap); const y = r * (h + gap);
+            const currentNum = startNum + globalOffset + i;
+
+            const img = new Image(); img.src = imgs[i];
+            await new Promise(resolve => { if(img.complete)resolve(); else img.onload=resolve; img.onerror=resolve; });
+
+            ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+            const iRatio = img.width / img.height; const cRatio = w / h;
+            if (iRatio > cRatio) ctx.drawImage(img, x - (h*iRatio - w)/2, y, h*iRatio, h);
+            else ctx.drawImage(img, x, y - (w/iRatio - h)/2, w, w/iRatio);
+            ctx.restore();
+
+            if (showNum) {
+                ctx.fillStyle = '#FFFFFF'; ctx.strokeStyle = '#000000'; ctx.lineWidth = fontSize / 15;
+                ctx.font = `bold ${fontSize}px sans-serif`;
+                let tx = x + w/2, ty = y + h - fontSize/2;
+                if(fontPos === 'center') ty = y + h/2 + fontSize/3; else if(fontPos.includes('top')) ty = y + fontSize + 20;
+                if(fontPos.includes('left')) { tx = x + 20; ctx.textAlign = 'left'; } else if(fontPos.includes('right')) { tx = x + w - 20; ctx.textAlign = 'right'; } else ctx.textAlign = 'center';
+                ctx.strokeText(currentNum, tx, ty); ctx.fillText(currentNum, tx, ty);
+            }
+            if (applyMask && maskIndices.includes(currentNum)) {
+                if (currentMaskMode === 'line') {
+                    ctx.beginPath(); ctx.strokeStyle = document.getElementById('maskColor').value;
+                    ctx.lineWidth = document.getElementById('maskWidth').value * (w/500) * 5; ctx.lineCap = 'round';
+                    if (lineStyle === 'cross') { ctx.moveTo(x+w*0.2, y+h*0.2); ctx.lineTo(x+w*0.8, y+h*0.8); ctx.moveTo(x+w*0.8, y+h*0.2); ctx.lineTo(x+w*0.2, y+h*0.8); } 
+                    else { ctx.moveTo(x+w*0.2, y+h*0.8); ctx.lineTo(x+w*0.8, y+h*0.2); }
+                    ctx.stroke();
+                } else if (currentMaskMode === 'image' && stickerImg) {
+                    const sizePct = document.getElementById('stickerSize').value / 100; const xPct = document.getElementById('stickerX').value / 100; const yPct = document.getElementById('stickerY').value / 100;
+                    const sw = w * sizePct; const sh = sw * (stickerImg.height / stickerImg.width);
+                    ctx.drawImage(stickerImg, x + (w * xPct) - sw/2, y + (h * yPct) - sh/2, sw, sh);
+                }
+            }
+        }
+    }
+    function downloadZip() {
+        if (!generatedBlobs.length) return alert('请先生成拼图');
+        showLoading(true, '正在打包 ZIP...');
+        const zip = new JSZip(); const folder = zip.folder("拼图分组");
+        generatedBlobs.forEach((blob, i) => { const ext = blob.type === 'image/png' ? 'png' : 'jpg'; folder.file(`拼图_Part_${i+1}.${ext}`, blob); });
+        zip.generateAsync({type:"blob"}).then(function(content) { if(isCancelled) return; downloadBlob(content, `拼图打包_${new Date().getTime()}.zip`); showLoading(false); })
+        .catch(function(e) { if(!isCancelled) alert('打包失败: ' + e.message); showLoading(false); });
+    }
+    async function combineAndDownload() {
+        if (!generatedBlobs.length) return;
+        if (generatedBlobs.length === 1) { downloadBlob(generatedBlobs[0], '拼图_完整版.jpg'); return; }
+        showLoading(true, '正在合并...');
+        try {
+            const bitmaps = await Promise.all(generatedBlobs.map(b => createImageBitmap(b)));
+            const totalH = bitmaps.reduce((sum, bmp) => sum + bmp.height, 0); const maxW = bitmaps[0].width;
+            if(totalH > 30000) alert('警告：图片过长，建议使用ZIP打包。');
+            const canvas = document.createElement('canvas'); canvas.width = maxW; canvas.height = totalH;
+            const ctx = canvas.getContext('2d'); let y = 0;
+            for(let bmp of bitmaps) { if (isCancelled) break; ctx.drawImage(bmp, 0, y); y += bmp.height; }
+            if(!isCancelled) { canvas.toBlob(blob => { if (isCancelled) return; downloadBlob(blob, `拼图_合并版_${new Date().getTime()}.jpg`); showLoading(false); }, 'image/jpeg', 0.9); }
+        } catch(e) { if(!isCancelled) alert('合并失败，请使用ZIP打包。'); showLoading(false); }
+    }
+    function downloadAllParts() { if(!confirm('注意：浏览器可能会拦截批量下载。\n建议使用 "ZIP 打包"。\n\n继续？')) return; generatedBlobs.forEach((blob, i) => { setTimeout(() => { const ext = blob.type === 'image/png' ? 'png' : 'jpg'; downloadBlob(blob, `拼图_Part_${i+1}.${ext}`); }, i * 300); }); }
+    function downloadBlob(blob, name) { const link = document.createElement('a'); link.download = name; link.href = URL.createObjectURL(blob); link.click(); }
+    
+    // 初始化模式：默认进入“小数据量分组”模式
+    switchMode('small');
+    // --- 新增：帮助中心交互逻辑 ---
+function toggleHelpModal(show) {
+    const modal = document.getElementById('helpModal');
+    const content = document.getElementById('helpModalContent');
+    
+    if (show) {
+        modal.style.display = 'flex';
+        // 稍微延迟一点加动画类，让transition生效
+        setTimeout(() => {
+            content.classList.remove('translate-y-full');
+        }, 10);
+    } else {
+        content.classList.add('translate-y-full');
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300); // 等待动画结束
+    }
+}
+
+function toggleHelpItem(id) {
+    const content = document.getElementById(id);
+    const icon = document.getElementById('icon-' + id);
+    
+    // 切换显示状态
+    if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        icon.classList.add('rotate-180'); // 箭头旋转
+    } else {
+        content.classList.add('hidden');
+        icon.classList.remove('rotate-180');
+    }
+}
+
+</script>
+</body>
+</html>
