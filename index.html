@@ -1,20 +1,27 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+<link rel="manifest" href="manifest.json">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>拼图Ultimate (Pro Max)</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#F2F2F7">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1685/1685230.png">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script><style>
         /* --- 基础样式 --- */
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
             background-color: #F2F2F7;
-            color: #000000;
-            -webkit-tap-highlight-color: transparent;
+            color: #000000;-webkit-tap-highlight-color: transparent;
             padding-bottom: 200px;
-        }/* 隐藏滚动条 */
+            overscroll-behavior-y: none;
+        }
+        /* 隐藏滚动条 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
@@ -25,11 +32,16 @@
             overflow: hidden;
             box-shadow: 0 1px 2px rgba(0,0,0,0.03);
             margin-bottom: 20px;
+            contain: content; 
         }
         /* 列表分割线 */
         .ios-divide > div:not(:last-child), 
-        .ios-divide > label:not(:last-child) { border-bottom: 0.5px solid #C6C6C8; }/* 输入框重置 */
+        .ios-divide > label:not(:last-child),
+        .ios-divide > details > .divide-y > div:not(:last-child) { border-bottom: 0.5px solid #C6C6C8; }
+        
+        /* 输入框重置 */
         input[type=number], select, input[type=text] { appearance: none; -webkit-appearance: none; background: transparent; }
+        
         /* iOS 滑动条 */
         input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; height: 24px; margin: 0; padding: 0; cursor: pointer; }
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; background: #E5E5EA; border-radius: 2px; border: none; }
@@ -41,19 +53,40 @@
         .action-sheet.show { transform: translateY(0); }
         .animate-fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* 结果区域 */
+        
+        /* 结果区域 - 修正：移除高度限制，允许页面自然滚动 */
         .result-scroll-container {
-            max-height: 50vh; 
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
+            /* 关键修改：取消 max-height 和 overflow-y，让图片自动撑开页面 */
+            min-height: 100px;
             background: #f9f9f9;
             border-radius: 12px;
             padding: 10px;
+            contain: content;
         }
+        
+        /* 拖拽上传遮罩 */
+        #dragOverlay {
+            position: fixed; inset: 0; background: rgba(0,122,255,0.1); backdrop-filter: blur(2px);
+            z-index: 999; display: none; justify-content: center; align-items: center;
+            border: 4px dashed #007AFF; margin: 10px; border-radius: 20px; pointer-events: none;
+        }
+        #dragOverlay.active { display: flex; }
+        .sortable-ghost { opacity: 0.4; background: #E5E5EA; } 
+        
+        #imageGrid {
+            content-visibility: auto; 
+            contain-intrinsic-size: 300px;
+        }
+        .thumbnail-item { 
+            contain: paint layout; 
+        }
+        
+        #progressBarContainer { display: none !important; }
     </style>
 </head>
-<body class="antialiased"><header class="sticky top-0 z-50 bg-[#F2F2F7]/90 backdrop-blur-xl border-b border-gray-200/50 supports-[backdrop-filter]:bg-[#F2F2F7]/60">
+<body class="antialiased"><div id="dragOverlay"><div class="text-[#007AFF] font-bold text-2xl bg-white/90 px-6 py-3 rounded-xl shadow-lg">松手释放图片</div></div>
+
+    <header class="sticky top-0 z-50 bg-[#F2F2F7]/90 backdrop-blur-xl border-b border-gray-200/50 supports-[backdrop-filter]:bg-[#F2F2F7]/60">
         <div class="max-w-2xl mx-auto px-5 py-3 flex justify-between items-center h-[52px]">
             <h1 class="text-[22px] font-bold tracking-tight text-black">拼图排序<span class="text-xs font-normal text-white bg-black px-1.5 py-0.5 rounded ml-1">Ultimate</span></h1>
             <div class="flex items-center gap-2">
@@ -71,62 +104,90 @@
             <input type="file" id="stickerInput" accept="image/*" class="hidden" onchange="handleStickerFile(this.files)">
         </div>
     </header><main class="max-w-2xl mx-auto px-4 pt-4 relative">
-        <div id="progressToast" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) -translate-y-[200%] opacity-0 pointer-events-none">
-            <div class="bg-white/90 backdrop-blur-xl text-gray-900 rounded-full shadow-lg flex items-center py-3 pl-5 pr-2 gap-3 border border-gray-200/50 min-w-[240px] max-w-[90vw]">
+        <div id="progressToast" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] transition-all duration-200 cubic-bezier(0.34, 1.56, 0.64, 1) -translate-y-[200%] opacity-0 pointer-events-none">
+            <div class="bg-white/95 backdrop-blur-xl text-gray-900 rounded-full shadow-2xl flex items-center py-3 pl-6 pr-4 gap-3 border border-gray-200/50 min-w-[200px]">
                 <div class="flex-1 flex flex-col justify-center min-w-0">
-                    <div class="flex items-center justify-between mb-1">
-                        <span id="progressText" class="text-[15px] font-bold leading-tight truncate">准备中...</span>
-                        <span id="progressDetail" class="text-[12px] text-gray-500 font-mono ml-3">0%</span>
-                    </div>
-                    <div class="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                        <div id="progressBar" class="bg-[#007AFF] h-full w-0 transition-all duration-300 ease-out"></div>
+                    <div class="flex items-center justify-center gap-2">
+                        <span id="progressText" class="text-[15px] font-bold leading-tight truncate text-[#007AFF]">准备中...</span>
+                        <span id="progressDetail" class="text-[13px] text-gray-400 font-mono hidden">0%</span>
                     </div>
                 </div>
-                <button onclick="cancelProcess()" class="pointer-events-auto w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 active:scale-90 transition text-gray-500 hover:text-gray-900 shrink-0">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                <button onclick="cancelProcess()" class="pointer-events-auto w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 active:scale-90 transition text-gray-500 hover:text-[#FF3B30] shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
-        </div>        <div class="ios-card p-4">
-            <div class="flex justify-between items-center mb-3">
-                <span class="text-[13px] text-gray-500 uppercase font-medium pl-1">已导入 <span id="countBadge">0</span> 张</span>
-                <button onclick="clearAll()" class="text-[#FF3B30] text-[13px] active:opacity-50 transition hidden" id="clearBtn">清空</button>
-            </div>
-            <div id="imageGrid" class="grid grid-cols-4 gap-2 overflow-y-auto max-h-[180px] min-h-[100px] no-scrollbar">
-                <div id="emptyState" class="col-span-full flex flex-col items-center justify-center py-8 space-y-3">
-                    <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                    </div>
-                    <span class="text-gray-400 text-sm">导入图片 (点击图片可替换/删除)</span>
-                </div>
-            </div>
-            <div id="duplicateAlert" class="hidden mt-3 bg-yellow-50 border border-yellow-100 rounded-lg p-3 text-xs text-yellow-700 flex items-start gap-2">
-                <span class="font-bold">发现重复图片：</span> <span id="dupCount">0</span> 张。
-                <button onclick="removeDuplicates()" class="underline text-yellow-800 font-bold ml-1">一键去重</button>
-            </div>
         </div>
-<div class="mb-2 pl-4 text-[13px] text-gray-500 uppercase font-medium">单元格比例</div>
-        <div class="ios-card ios-divide">
-            <input type="hidden" id="gap" value="0">
-            <div class="p-4 bg-white active:bg-gray-50 transition relative">
-                <div class="flex items-center justify-between">
-                    <span class="text-[17px]">画布比例</span>
-                    <div class="flex items-center gap-2">
-                        <select id="aspectRatio" onchange="toggleCustomRatio()" class="text-[#007AFF] text-[17px] pr-6 bg-transparent focus:outline-none text-right appearance-none cursor-pointer dir-rtl">
-                            <option value="0.5625">9:16 手机全屏</option>
-                            <option value="0.75">3:4 海报</option>
-                            <option value="1">1:1 正方形</option>
-                            <option value="1.333">4:3 照片</option>
-                            <option value="custom">自定义...</option>
-                        </select>
+        
+        <div class="ios-card">
+            <details class="group" open>
+                <summary class="flex justify-between items-center p-4 bg-white cursor-pointer select-none active:bg-gray-50 transition">
+                    <span class="text-[13px] text-gray-500 uppercase font-medium pl-1">
+                        已导入 <span id="countBadge">0</span> 张 
+                        <span class="text-[10px] text-[#007AFF] bg-[#007AFF]/10 px-1.5 py-0.5 rounded ml-2 font-bold">支持长按拖拽排序</span>
+                    </span>
+                    <div class="flex items-center gap-3">
+                        <button onclick="event.preventDefault(); event.stopPropagation(); clearAll()" class="text-[#FF3B30] text-[13px] active:opacity-50 transition hidden" id="clearBtn">清空</button>
+                        <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                </summary>
+                
+                <div class="p-4 pt-0 border-t border-gray-100">
+                    <div id="imageGrid" class="grid grid-cols-4 gap-2 overflow-y-auto max-h-[220px] min-h-[100px] no-scrollbar touch-pan-y mt-4">
+                        <div id="emptyState" class="col-span-full flex flex-col items-center justify-center py-8 space-y-3">
+                            <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            </div>
+                            <span class="text-gray-400 text-sm">导入图片 (点击可替换/长按拖拽)</span>
+                        </div>
+                    </div>
+                    <div id="duplicateAlert" class="hidden mt-3 bg-yellow-50 border border-yellow-100 rounded-lg p-3 text-xs text-yellow-700 flex items-start gap-2">
+                        <span class="font-bold">发现重复图片：</span> <span id="dupCount">0</span> 张。
+                        <button onclick="removeDuplicates()" class="underline text-yellow-800 font-bold ml-1">一键去重</button>
                     </div>
                 </div>
-                <div class="text-[10px] text-gray-400 mt-1">设置单张图片的宽高比例</div>
-            </div>
-            <div id="customRatioBox" class="hidden p-4 bg-gray-50 flex items-center justify-end gap-3 border-t border-gray-100">
-                <input type="number" id="customW" placeholder="宽" class="bg-white border rounded px-2 py-1 text-center w-20 text-sm" value="1000">
-                <span class="text-gray-400">:</span>
-                <input type="number" id="customH" placeholder="高" class="bg-white border rounded px-2 py-1 text-center w-20 text-sm" value="1500">
-            </div>
+            </details>
+        </div><div class="mb-2 pl-4 text-[13px] text-gray-500 uppercase font-medium">单元格与间距</div>
+        <div class="ios-card">
+            <details class="group">
+                <summary class="flex items-center justify-between p-4 bg-white cursor-pointer select-none active:bg-gray-50 transition">
+                    <div>
+                        <div class="text-[17px] font-bold">单元格与间距设置</div>
+                        <div class="text-[10px] text-gray-400 mt-0.5">设置画布比例、留白间隙</div>
+                    </div>
+                    <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </summary>
+                
+                <div class="divide-y divide-gray-200 border-t border-gray-100">
+                    <div class="p-4 bg-white active:bg-gray-50 transition relative">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[17px]">画布比例</span><div class="flex items-center gap-2">
+                                <select id="aspectRatio" onchange="toggleCustomRatio()" class="text-[#007AFF] text-[17px] pr-6 bg-transparent focus:outline-none text-right appearance-none cursor-pointer dir-rtl">
+                                    <option value="0.5625">9:16 手机全屏</option>
+                                    <option value="0.75">3:4 海报</option>
+                                    <option value="1">1:1 正方形</option>
+                                    <option value="1.333">4:3 照片</option>
+                                    <option value="custom">自定义...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="text-[10px] text-gray-400 mt-1">设置单张图片的宽高比例</div>
+                    </div>
+                    <div class="p-4 bg-white active:bg-gray-50 transition">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[17px]">图片间隙</span>
+                            <span id="gapValueDisplay" class="text-[#007AFF] font-bold text-[15px]">0px</span>
+                        </div>
+                        <input type="range" id="gap" min="0" max="100" value="0" step="1" oninput="document.getElementById('gapValueDisplay').innerText=this.value+'px'">
+                        <div class="text-[10px] text-gray-400 mt-1">设置图片之间的留白距离</div>
+                    </div>
+                    
+                    <div id="customRatioBox" class="hidden p-4 bg-gray-50 flex items-center justify-end gap-3 border-t border-gray-100">
+                        <input type="number" id="customW" placeholder="宽" class="bg-white border rounded px-2 py-1 text-center w-20 text-sm" value="1000">
+                        <span class="text-gray-400">:</span>
+                        <input type="number" id="customH" placeholder="高" class="bg-white border rounded px-2 py-1 text-center w-20 text-sm" value="1500">
+                    </div>
+                </div>
+            </details>
         </div><div class="mb-2 pl-4 text-[13px] text-gray-500 uppercase font-medium">序号标注</div>
         <div class="ios-card ios-divide">
             <div class="flex items-center justify-between p-4 bg-white">
@@ -136,180 +197,220 @@
                     <div class="w-[51px] h-[31px] bg-[#E9E9EA] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-[27px] after:w-[27px] after:shadow-sm after:transition-all peer-checked:bg-[#34C759]"></div>
                 </label>
             </div>
-            <div class="p-4 bg-white active:bg-gray-50 transition">
-                <div class="flex items-center justify-between">
-                    <span class="text-[17px]">起始数值</span>
-                    <input type="number" id="startNumber" value="1" class="text-right text-[#007AFF] text-[17px] focus:outline-none w-20 bg-gray-50 rounded px-2 py-1" placeholder="1">
-                </div>
-                <div class="text-[10px] text-gray-400 mt-1">设置起始序号数值</div>
-            </div>
-            <div class="p-4 bg-white active:bg-gray-50 transition">
-                <div class="flex items-center justify-between">
-                    <span class="text-[17px]">字号大小</span>
-                    <input type="number" id="fontSize" value="350" class="text-right text-[#007AFF] text-[17px] focus:outline-none w-20" placeholder="150">
-                </div>
-                <div class="text-[10px] text-gray-400 mt-1">可自定义填写序号大小</div>
-            </div><div class="p-4 bg-white active:bg-gray-50 transition">
-                <div class="flex items-center justify-between">
-                    <span class="text-[17px]">位置</span>
-                    <select id="fontPos" class="text-[#007AFF] text-[17px] pr-6 bg-transparent focus:outline-none appearance-none dir-rtl">
-                        <option value="bottom-center">底部居中</option>
-                        <option value="bottom-left">底部左侧</option>
-                        <option value="bottom-right">底部右侧</option>
-                        <option value="center">正中间</option>
-                        <option value="top-left">左上角</option>
-                        <option value="top-right">右上角</option>
-                    </select>
-                </div>
-                <div class="text-[10px] text-gray-400 mt-1">选择序号位置</div>
-            </div>
-        </div><div class="mb-2 pl-4 text-[13px] text-gray-500 uppercase font-medium mt-6">导出与布局策略</div>
-        <div id="unified-group-panel" class="ios-card ios-divide mb-6">
-             <div class="p-4 bg-white">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-[17px] font-bold">排列与分组</span>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                         <label class="text-[11px] text-gray-500 block mb-1">列数 (横向)</label>
-                         <input type="number" id="cols" value="3" placeholder="默认:3" class="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-center text-sm font-bold text-[#007AFF] focus:border-[#007AFF] outline-none" oninput="calculateGroupBatch()">
+            
+            <details class="group">
+                <summary class="flex items-center justify-between p-4 bg-white cursor-pointer select-none active:bg-gray-50 transition">
+                    <div>
+                        <div class="text-[17px] text-[#007AFF]">序号详细设置</div>
+                        <div class="text-[10px] text-gray-400 mt-0.5">设置序号大小、颜色、字体、起始位置</div>
                     </div>
-                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                         <label class="text-[11px] text-gray-500 block mb-1">每组行数 (自动)</label>
-                         <input type="number" id="group_rows" placeholder="默认:50" class="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-center text-sm font-bold text-[#007AFF] focus:border-[#007AFF] outline-none" oninput="calculateGroupBatch()">
-                    </div>
-                </div>
-                <div class="mt-3 text-[11px] text-gray-500 bg-[#F2F2F7] p-2 rounded flex items-center gap-2" id="group_hint">
-                    <span class="font-bold">Ready</span> <span>默认将所有图片生成为一组（超过一百张不会生成一组图片）</span>
-                </div>
-            </div>
-
-            <div class="p-4 bg-white border-t border-gray-100">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="flex flex-col">
-                        <span class="text-[17px] font-bold">全局纹理 / 覆盖层（无这个需求可忽略）</span>
-                        <span class="text-[10px] text-gray-400">拉伸覆盖全图 (如: 水印/底纹/不重叠水印)</span>
-                    </div>
-                    <div class="flex gap-2">
-                        <button onclick="previewOverlayEffect()" class="text-gray-600 text-[13px] font-bold bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-full active:bg-gray-200 transition flex items-center gap-1">
-                            👁️ 预览
-                        </button>
-                        <button onclick="document.getElementById('overlayInput').click()" class="text-[#007AFF] text-[13px] font-bold bg-[#007AFF]/10 px-3 py-1.5 rounded-full active:bg-[#007AFF]/20 transition">
-                            + 图片
-                        </button>
-                    </div>
-                    <input type="file" id="overlayInput" accept="image/*" class="hidden" onchange="handleOverlayFile(this.files)">
-                </div>
+                    <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </summary>
                 
-                <div id="overlayInfoBox" class="hidden bg-gray-50 rounded-lg p-2 mb-3 flex items-center justify-between border border-gray-100">
-                    <div class="flex items-center gap-2 overflow-hidden">
-                        <img id="overlayThumb" class="w-8 h-8 rounded object-cover border border-gray-200 bg-white">
-                        <span id="overlayName" class="text-xs text-gray-500 truncate max-w-[150px]">filename.png</span>
+                <div class="divide-y divide-gray-200 border-t border-gray-100">
+                    <div class="flex items-center justify-between p-4 bg-white">
+                        <span class="text-[17px]">起始数值</span>
+                        <input type="number" id="startNumber" value="1" class="text-right text-[#007AFF] text-[17px] focus:outline-none w-20 bg-transparent rounded px-2 py-1" placeholder="1">
+                    </div><div class="flex items-center justify-between p-4 bg-white">
+                        <span class="text-[17px]">字号大小</span>
+                        <input type="number" id="fontSize" value="350" class="text-right text-[#007AFF] text-[17px] focus:outline-none w-20 bg-transparent rounded px-2 py-1" placeholder="150">
                     </div>
-                    <button onclick="clearOverlay()" class="text-gray-400 hover:text-[#FF3B30] px-2">✕</button>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-[11px] text-gray-500 block mb-1">混合模式</label>
-                        <select id="overlayMode" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-sm font-bold text-gray-700 outline-none">
-                            <option value="source-over">标准 (正常)</option>
-                            <option value="multiply">正片叠底 (变暗)</option>
-                            <option value="screen">滤色 (变亮/添加)</option>
-                            <option value="overlay">覆盖 (叠加)</option>
-                            <option value="soft-light">柔光</option>
-                            <option value="difference">差值</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="text-[11px] text-gray-500 block mb-1">不透明度</label>
+                    <div class="flex items-center justify-between p-4 bg-white">
+                        <span class="text-[17px]">字体颜色</span>
                         <div class="flex items-center gap-2">
-                            <div class="flex items-center h-[34px] bg-gray-50 border border-gray-200 rounded-lg px-2 flex-1">
-                                <input type="range" id="overlayOpacityRange" min="0" max="1" step="0.01" value="1" class="w-full h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer" oninput="syncOpacity('range')">
-                            </div>
-                            <input type="number" id="overlayOpacityInput" min="0" max="1" step="0.01" value="1" class="w-14 h-[34px] bg-gray-50 border border-gray-200 rounded-lg text-center text-sm font-bold text-[#007AFF] outline-none" oninput="syncOpacity('input')">
+                            <input type="color" id="fontColor" value="#FFFFFF" class="w-8 h-8 rounded-full overflow-hidden border border-gray-200">
                         </div>
                     </div>
-                </div>
-            </div><div class="p-4 bg-white border-t border-gray-100">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-[17px]">导出画质</span>
-                    <div class="flex items-center gap-2">
-                        <button onclick="previewQuality()" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-1 rounded flex items-center gap-1 transition"><span>👁️ 预览</span></button>
-                        <div class="relative w-14">
-                            <input type="number" id="customQ_unified" min="10" max="100" value="80" class="bg-gray-100 rounded px-1 py-1 text-center w-full text-[15px] font-bold text-[#007AFF] outline-none" placeholder="80" oninput="validateQualityInput(this)">
+                    <div class="flex items-center justify-between p-4 bg-white">
+                        <span class="text-[17px]">阴影颜色</span>
+                        <div class="flex items-center gap-2">
+                            <input type="color" id="fontShadowColor" value="#000000" class="w-8 h-8 rounded-full overflow-hidden border border-gray-200">
                         </div>
-                        <span class="text-xs text-gray-500 mr-1">%</span>
-                        <select id="exportQuality_unified" onchange="applyQualityPreset(this)" class="text-[#007AFF] text-[15px] bg-transparent focus:outline-none text-right dir-rtl cursor-pointer max-w-[140px]">
-                            <option value="none" selected disabled>画质选择...</option>
-                            <option value="1.0">原图 (PNG)</option>
-                            <option value="0.95">高清 (95%)</option>
-                            <option value="0.80">标准压缩 (80%)</option>
-                            <option value="custom">自定义</option>
+                    </div>
+                    
+                    <div class="flex items-center justify-between p-4 bg-white">
+                        <span class="text-[17px]">字体类型</span>
+                        <select id="fontFamily" class="text-[#007AFF] text-[17px] pr-6 bg-transparent focus:outline-none appearance-none dir-rtl text-right w-40" onchange="saveSettings()">
+                            <option value="sans-serif">默认 (无衬线)</option>
+                            <option value="'Heiti SC', 'Microsoft YaHei', sans-serif">黑体 (Bold)</option>
+                            <option value="'Songti SC', 'SimSun', serif">宋体 (Serif)</option>
+                            <option value="'KaiTi', '楷体', serif">楷体 (Calligraphy)</option>
+                            <option value="'Times New Roman', serif">Times New Roman</option>
+                            <option value="cursive">手写风 (Cursive)</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center justify-between p-4 bg-white">
+                        <span class="text-[17px]">位置</span>
+                        <select id="fontPos" class="text-[#007AFF] text-[17px] pr-6 bg-transparent focus:outline-none appearance-none dir-rtl">
+                            <option value="bottom-center">底部居中</option>
+                            <option value="bottom-left">底部左侧</option>
+                            <option value="bottom-right">底部右侧</option>
+                            <option value="center">正中间</option>
+                            <option value="top-left">左上角</option>
+                            <option value="top-right">右上角</option>
                         </select>
                     </div>
                 </div>
-                <div class="text-[10px] text-[#FF3B30] mt-1 font-bold">⚠️ 更改画质后请重新生成拼图，请自行调画质，否则生成图片过大</div>
-                <div class="text-[10px] text-gray-400 leading-tight mt-1">
-                    * 真实文件大小将在生成后准确计算并显示。<br>
-                    * 建议50%，（30%也不会影响太大画质查看图片，不会图片过大）。
+            </details>
+        </div><div id="unified-group-panel" class="ios-card mb-6">
+             <details class="group">
+                <summary class="flex items-center justify-between p-4 bg-white cursor-pointer select-none active:bg-gray-50 transition">
+                    <div>
+                        <div class="text-[17px] font-bold">导出与布局策略</div>
+                        <div class="text-[10px] text-gray-400 mt-0.5">设置排列列数、分组方式、画质</div>
+                    </div>
+                    <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </summary>
+                
+                <div class="divide-y divide-gray-200 border-t border-gray-100">
+                    <div class="p-4 bg-white">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[17px] font-bold text-gray-800">排列与分组</span>
+                        </div><div class="grid grid-cols-2 gap-4">
+                            <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                 <label class="text-[11px] text-gray-500 block mb-1">列数 (横向)</label>
+                                 <input type="number" id="cols" value="3" placeholder="默认:3" class="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-center text-sm font-bold text-[#007AFF] focus:border-[#007AFF] outline-none" oninput="calculateGroupBatch()">
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                 <label class="text-[11px] text-gray-500 block mb-1">每组行数 (自动)</label>
+                                 <input type="number" id="group_rows" placeholder="默认:50" class="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-center text-sm font-bold text-[#007AFF] focus:border-[#007AFF] outline-none" oninput="calculateGroupBatch()">
+                            </div>
+                        </div>
+                        <div class="mt-3 text-[11px] text-gray-500 bg-[#F2F2F7] p-2 rounded flex items-center gap-2" id="group_hint">
+                            <span class="font-bold">Ready</span> <span>默认将所有图片生成为一组（超过一百张不会生成一组图片）</span>
+                        </div>
+                    </div><div class="p-4 bg-white">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex flex-col">
+                                <span class="text-[17px] font-bold text-gray-800">全局纹理 / 覆盖层</span>
+                                <span class="text-[10px] text-gray-400">水印/底纹 (无需求可忽略)</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="previewOverlayEffect()" class="text-gray-600 text-[13px] font-bold bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-full active:bg-gray-200 transition flex items-center gap-1">
+                                    👁️ 预览
+                                </button>
+                                <button onclick="document.getElementById('overlayInput').click()" class="text-[#007AFF] text-[13px] font-bold bg-[#007AFF]/10 px-3 py-1.5 rounded-full active:bg-[#007AFF]/20 transition">
+                                    + 图片
+                                </button>
+                            </div>
+                            <input type="file" id="overlayInput" accept="image/*" class="hidden" onchange="handleOverlayFile(this.files)">
+                        </div>
+                        <div id="overlayInfoBox" class="hidden bg-gray-50 rounded-lg p-2 mb-3 flex items-center justify-between border border-gray-100">
+                            <div class="flex items-center gap-2 overflow-hidden">
+                                <img id="overlayThumb" class="w-8 h-8 rounded object-cover border border-gray-200 bg-white">
+                                <span id="overlayName" class="text-xs text-gray-500 truncate max-w-[150px]">filename.png</span>
+                            </div>
+                            <button onclick="clearOverlay()" class="text-gray-400 hover:text-[#FF3B30] px-2">✕</button>
+                        </div><div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-[11px] text-gray-500 block mb-1">混合模式</label>
+                                <select id="overlayMode" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-sm font-bold text-gray-700 outline-none">
+                                    <option value="source-over">标准 (正常)</option>
+                                    <option value="multiply">正片叠底 (变暗)</option>
+                                    <option value="screen">滤色 (变亮/添加)</option>
+                                    <option value="overlay">覆盖 (叠加)</option>
+                                    <option value="soft-light">柔光</option>
+                                    <option value="difference">差值</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-[11px] text-gray-500 block mb-1">不透明度</label>
+                                <div class="flex items-center gap-2">
+                                    <div class="flex items-center h-[34px] bg-gray-50 border border-gray-200 rounded-lg px-2 flex-1">
+                                        <input type="range" id="overlayOpacityRange" min="0" max="1" step="0.01" value="1" class="w-full h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer" oninput="syncOpacity('range')">
+                                    </div>
+                                    <input type="number" id="overlayOpacityInput" min="0" max="1" step="0.01" value="1" class="w-14 h-[34px] bg-gray-50 border border-gray-200 rounded-lg text-center text-sm font-bold text-[#007AFF] outline-none" oninput="syncOpacity('input')">
+                                </div>
+                            </div>
+                        </div>
+                    </div><div class="p-4 bg-white">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[17px] font-bold text-gray-800">导出画质</span>
+                            <div class="flex items-center gap-2">
+                                <button onclick="previewQuality()" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-1 rounded flex items-center gap-1 transition"><span>👁️ 预览</span></button>
+                                <div class="relative w-14">
+                                    <input type="number" id="customQ_unified" min="10" max="100" value="80" class="bg-gray-100 rounded px-1 py-1 text-center w-full text-[15px] font-bold text-[#007AFF] outline-none" placeholder="80" oninput="validateQualityInput(this)">
+                                </div>
+                                <span class="text-xs text-gray-500 mr-1">%</span>
+                                <select id="exportQuality_unified" onchange="applyQualityPreset(this)" class="text-[#007AFF] text-[15px] bg-transparent focus:outline-none text-right dir-rtl cursor-pointer max-w-[140px]">
+                                    <option value="none" selected disabled>画质选择...</option>
+                                    <option value="1.0">原图 (PNG)</option>
+                                    <option value="0.95">高清 (95%)</option>
+                                    <option value="0.80">标准压缩 (80%)</option>
+                                    <option value="custom">自定义</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="text-[10px] text-[#FF3B30] mt-1 font-bold">⚠️ 更改画质后请重新生成拼图，请自行调画质，否则生成图片过大</div>
+                        <div class="text-[10px] text-gray-400 leading-tight mt-1">
+                            * 真实文件大小将在生成后准确计算并显示。<br>
+                            * 建议50%，（30%也不会影响太大画质查看图片，不会图片过大）。
+                        </div>
+                    </div>
                 </div>
-            </div>
+            </details>
+        </div><div class="ios-card">
+            <details class="group">
+                <summary class="flex items-center justify-between p-4 bg-white cursor-pointer select-none active:bg-gray-50 transition">
+                    <div>
+                        <div class="text-[17px] font-bold">打码与贴纸</div>
+                        <div class="text-[10px] text-gray-400 mt-0.5">遮挡特定图片或序号、添加贴纸</div>
+                    </div>
+                    <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </summary>
+
+                <div class="divide-y divide-gray-200 border-t border-gray-100">
+                    <div class="p-4 bg-white">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex flex-col">
+                                <span class="text-[17px] font-bold text-gray-800">目标序号</span>
+                                <span class="text-[10px] text-gray-400">输入数字 (如: 5, 12, 1-3)</span>
+                            </div>
+                            <input type="text" id="maskIndices" placeholder="如: 5, 12" class="text-right text-[#007AFF] text-[17px] focus:outline-none w-40 placeholder-gray-300 bg-gray-50 rounded px-2 py-1">
+                        </div>
+
+                        <div class="flex p-1 bg-gray-100 rounded-lg mb-4">
+                            <button onclick="switchMaskTab('line')" id="tab-line" class="flex-1 py-1.5 text-xs font-medium rounded-md bg-white shadow text-black transition-all">画线打码</button>
+                            <button onclick="switchMaskTab('image')" id="tab-image" class="flex-1 py-1.5 text-xs font-medium rounded-md text-gray-500 transition-all">图片/贴纸</button>
+                        </div><div id="mask-panel-line" class="animate-fade-in">
+                            <div class="flex justify-between items-center pb-3 border-b border-gray-100 mb-3">
+                                <span class="text-sm text-gray-500">形状样式</span>
+                                <div class="flex items-center gap-4 text-sm">
+                                    <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="lineStyle" value="cross" checked class="accent-[#FF3B30]"> <span>❌ 交叉</span></label>
+                                    <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="lineStyle" value="slash" class="accent-[#FF3B30]"> <span>╱ 斜线</span></label>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center py-2">
+                                 <span class="text-sm text-gray-500 w-20">颜色/粗细</span>
+                                 <div class="flex items-center flex-1 gap-3">
+                                     <input type="color" id="maskColor" value="#FF3B30" class="w-8 h-8 rounded-full border border-gray-200 shrink-0">
+                                     <div class="flex-1 h-8 flex items-center"><input type="range" id="maskWidth" min="1" max="20" value="10" class="w-full"></div>
+                                 </div>
+                            </div>
+                        </div><div id="mask-panel-image" class="hidden animate-fade-in">
+                            <button onclick="document.getElementById('stickerInput').click()" class="w-full py-2 border border-dashed border-gray-300 rounded-lg text-gray-500 text-sm mb-3 active:bg-gray-50">+ 上传遮挡图 (Logo/贴纸)</button>
+                            <div class="flex gap-4 mb-1">
+                                <div class="w-24 h-24 checkered-bg rounded-lg overflow-hidden border border-gray-200 shrink-0 relative cursor-pointer active:scale-95 transition shadow-sm" onclick="enlargeStickerPreview()">
+                                    <canvas id="stickerPreviewCanvas" class="w-full h-full object-contain"></canvas>
+                                </div>
+                                <div class="flex-1 flex flex-col justify-center space-y-4">
+                                    <div class="flex items-center text-xs text-gray-500"><span class="w-8 text-right mr-3">大小</span> <input type="range" id="stickerSize" min="10" max="200" value="50" class="flex-1"></div>
+                                    <div class="flex items-center text-xs text-gray-500"><span class="w-8 text-right mr-3">左右</span> <input type="range" id="stickerX" min="0" max="100" value="50" class="flex-1"></div>
+                                    <div class="flex items-center text-xs text-gray-500"><span class="w-8 text-right mr-3">上下</span> <input type="range" id="stickerY" min="0" max="100" value="50" class="flex-1"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div><div class="p-4 pt-0 grid grid-cols-2 gap-3 bg-white pb-4">
+                        <button onclick="generateMasked('apply')" class="py-3 rounded-xl bg-[#007AFF]/10 active:bg-[#007AFF]/20 text-[#007AFF] font-bold text-[15px] transition-all flex items-center justify-center gap-1">✨ 生成/更新</button>
+                        <button onclick="generateMasked('repack')" class="py-3 rounded-xl bg-[#FF3B30]/10 active:bg-[#FF3B30]/20 text-[#FF3B30] font-bold text-[15px] transition-all flex items-center justify-center gap-1">🔄 剔除并重排</button>
+                    </div>
+                </div>
+            </details>
         </div>
 
-        <div class="mb-2 pl-4 text-[13px] text-gray-500 uppercase font-medium">打码 / 贴纸</div>
-        <div class="ios-card ios-divide">
-            <div class="p-4 bg-white">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex flex-col">
-                        <span class="text-[17px] font-bold">目标序号</span>
-                        <span class="text-[10px] text-gray-400">输入数字 (如: 5, 12, 1-3)</span>
-                    </div>
-                    <input type="text" id="maskIndices" placeholder="如: 5, 12" class="text-right text-[#007AFF] text-[17px] focus:outline-none w-40 placeholder-gray-300 bg-gray-50 rounded px-2 py-1">
-                </div>
-
-                <div class="flex p-1 bg-gray-100 rounded-lg mb-4">
-                    <button onclick="switchMaskTab('line')" id="tab-line" class="flex-1 py-1.5 text-xs font-medium rounded-md bg-white shadow text-black transition-all">画线打码</button>
-                    <button onclick="switchMaskTab('image')" id="tab-image" class="flex-1 py-1.5 text-xs font-medium rounded-md text-gray-500 transition-all">图片/贴纸</button>
-                </div><div id="mask-panel-line" class="animate-fade-in">
-                    <div class="flex justify-between items-center pb-3 border-b border-gray-100 mb-3">
-                        <span class="text-sm text-gray-500">形状样式</span>
-                        <div class="flex items-center gap-4 text-sm">
-                            <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="lineStyle" value="cross" checked class="accent-[#FF3B30]"> <span>❌ 交叉</span></label>
-                            <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="lineStyle" value="slash" class="accent-[#FF3B30]"> <span>╱ 斜线</span></label>
-                        </div>
-                    </div>
-                    <div class="flex justify-between items-center py-2">
-                         <span class="text-sm text-gray-500 w-20">颜色/粗细</span>
-                         <div class="flex items-center flex-1 gap-3">
-                             <input type="color" id="maskColor" value="#FF3B30" class="w-8 h-8 rounded-full border border-gray-200 shrink-0">
-                             <div class="flex-1 h-8 flex items-center"><input type="range" id="maskWidth" min="1" max="20" value="10" class="w-full"></div>
-                         </div>
-                    </div>
-                </div>
-
-                <div id="mask-panel-image" class="hidden animate-fade-in">
-                    <button onclick="document.getElementById('stickerInput').click()" class="w-full py-2 border border-dashed border-gray-300 rounded-lg text-gray-500 text-sm mb-3 active:bg-gray-50">+ 上传遮挡图 (Logo/贴纸)</button>
-                    <div class="flex gap-4 mb-1">
-                        <div class="w-24 h-24 checkered-bg rounded-lg overflow-hidden border border-gray-200 shrink-0 relative cursor-pointer active:scale-95 transition shadow-sm" onclick="enlargeStickerPreview()">
-                            <canvas id="stickerPreviewCanvas" class="w-full h-full object-contain"></canvas>
-                        </div>
-                        <div class="flex-1 flex flex-col justify-center space-y-4">
-                            <div class="flex items-center text-xs text-gray-500"><span class="w-8 text-right mr-3">大小</span> <input type="range" id="stickerSize" min="10" max="200" value="50" class="flex-1"></div>
-                            <div class="flex items-center text-xs text-gray-500"><span class="w-8 text-right mr-3">左右</span> <input type="range" id="stickerX" min="0" max="100" value="50" class="flex-1"></div>
-                            <div class="flex items-center text-xs text-gray-500"><span class="w-8 text-right mr-3">上下</span> <input type="range" id="stickerY" min="0" max="100" value="50" class="flex-1"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="p-4 pt-0 grid grid-cols-2 gap-3 bg-white pb-4 rounded-b-xl">
-                <button onclick="generateMasked('apply')" class="py-3 rounded-xl bg-[#007AFF]/10 active:bg-[#007AFF]/20 text-[#007AFF] font-bold text-[15px] transition-all flex items-center justify-center gap-1">✨ 生成/更新</button>
-                <button onclick="generateMasked('repack')" class="py-3 rounded-xl bg-[#FF3B30]/10 active:bg-[#FF3B30]/20 text-[#FF3B30] font-bold text-[15px] transition-all flex items-center justify-center gap-1">🔄 剔除并重排</button>
-            </div>
-        </div><div id="resultArea" class="hidden pb-10">
+        <div id="resultArea" class="hidden pb-10">
             <div class="text-center text-gray-400 text-xs mb-3 font-medium">预览结果 (已生成)</div>
-            
             <div id="realSizeContainer" class="mb-4 bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800 hidden">
                 <div class="flex justify-between items-center font-bold border-b border-green-200/50 pb-2 mb-2">
                     <span class="flex items-center gap-1">
@@ -324,14 +425,12 @@
                 </div>
                 <div id="groupSizeDetail" class="pt-1 text-xs text-green-700 hidden grid grid-cols-2 gap-y-1"></div>
                 <button onclick="toggleGroupSizes()" id="btnToggleSizes" class="text-[10px] underline mt-1 w-full text-left text-green-600 hidden">展开分组详情 ▼</button>
-            </div>
-
-            <div class="ios-card bg-white p-0 shadow-lg border border-gray-100">
+            </div><div class="ios-card bg-white p-0 shadow-lg border border-gray-100">
                 <div class="result-scroll-container bg-gray-50/50">
                     <div id="seamlessContainer" class="w-full flex flex-col bg-white shadow-sm"></div>
                 </div>
             </div>
-
+            
             <div class="grid grid-cols-2 gap-3 mt-4">
                 <button onclick="confirmDownload('zip')" class="col-span-2 bg-[#34C759] text-white text-[16px] font-bold py-4 rounded-xl shadow-lg active:scale-[0.98] transition flex items-center justify-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
@@ -340,29 +439,29 @@
                 <button onclick="confirmDownload('combine')" class="bg-white text-black border border-gray-200 text-[14px] font-medium py-3 rounded-xl active:scale-95 transition">合并为一张长图</button>
                 <button onclick="confirmDownload('parts')" class="bg-white text-[#007AFF] border border-gray-200 text-[14px] font-medium py-3 rounded-xl active:scale-95 transition">逐张下载</button>
             </div>
-        </div><div class="py-10 pb-20 text-center">
+        </div>
+        <div class="py-10 pb-20 text-center">
             <div class="space-y-1">
                 <p class="text-xs text-gray-500 font-medium">拼图Ultimate (Pro Max)</p>
                 <p class="text-[10px] text-gray-400">Designed by ikko     🈲二传</p>
             </div>
         </div>
-    </main>
-    
-    <div class="fixed bottom-8 left-0 right-0 px-4 z-40 pointer-events-none">
+    </main><div class="fixed bottom-8 left-0 right-0 px-4 z-40 pointer-events-none">
         <button onclick="generate()" class="pointer-events-auto w-full max-w-2xl mx-auto bg-white/80 backdrop-blur-md text-black border border-white/40 font-semibold text-[17px] py-3.5 rounded-full shadow-lg active:scale-[0.98] transition flex items-center justify-center gap-2">
             <span>✨ 开始生成拼图</span>
         </button>
     </div>
-    <canvas id="canvas" class="hidden"></canvas><div id="previewModal" class="modal-overlay" onclick="this.style.display='none'">
+    
+    <canvas id="canvas" class="hidden"></canvas>
+    
+    <div id="previewModal" class="modal-overlay" onclick="this.style.display='none'">
         <div class="bg-white p-2 rounded-xl overflow-hidden shadow-2xl relative flex items-center justify-center flex-col" style="max-width:90%; max-height:80%;" onclick="event.stopPropagation()">
             <div id="previewHeader" class="w-full text-center py-2 text-sm font-bold text-gray-500 hidden">画质预览</div>
             <canvas id="enlargedPreviewCanvas" class="object-contain hidden" style="max-width:100%; max-height:70vh;"></canvas>
             <img id="qualityPreviewImg" class="object-contain hidden" style="max-width:100%; max-height:70vh;">
             <button onclick="document.getElementById('previewModal').style.display='none'" class="absolute top-2 right-2 bg-black/50 text-white rounded-full w-8 h-8 flex items-center justify-center">×</button>
         </div>
-    </div>
-    
-    <div id="imageActionOverlay" class="modal-overlay" onclick="closeImageActions()"></div>
+    </div><div id="imageActionOverlay" class="modal-overlay" onclick="closeImageActions()"></div>
     <div id="imageActionSheet" class="action-sheet">
         <div class="text-center text-gray-400 text-sm mb-4 font-medium">图片操作</div>
         <div class="space-y-3">
@@ -384,7 +483,19 @@
                 <button onclick="confirmResetAction()" class="flex-1 text-[17px] text-[#FF3B30] font-bold active:bg-gray-200/50 transition">重置</button>
             </div>
         </div>
-    </div><script>
+    </div>
+    
+    <script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js').then(registration => {
+                console.log('SW 注册成功:', registration.scope);
+            }, err => {
+                console.log('SW 注册失败:', err);
+            });
+        });
+    }
+    </script><script>
     let imagesData = [];
     let generatedBlobs = []; 
     let stickerImg = null;
@@ -392,68 +503,22 @@
     let targetImageIndex = -1; 
     let isCancelled = false;
     let globalOverlayImg = null; 
-    const MAX_CANVAS_DIMENSION = 8192;
+    let sortableInstance = null;
+    const MAX_CANVAS_DIMENSION = 8192; // 限制Canvas最大尺寸防崩溃
 
-    function showLoading(show, text='处理中...') {
-        const toast = document.getElementById('progressToast');
-        const textField = document.getElementById('progressText');
-        const detailField = document.getElementById('progressDetail');
-        const bar = document.getElementById('progressBar');
-        if (show) { 
-            isCancelled = false;
-            if(toast) { toast.classList.remove('-translate-y-[200%]', 'opacity-0', 'pointer-events-none'); toast.classList.add('translate-y-0', 'opacity-100'); }
-            if(textField) textField.innerText = text;
-            if(bar && detailField) {
-                if(text.includes('初始化')) { bar.style.width = '5%'; detailField.innerText = 'Start'; } 
-                else if (text.includes('生成第')) {
-                    try {
-                        const parts = text.match(/(\d+)\s*\/\s*(\d+)/);
-                        if(parts && parts.length === 3) {
-                            const percent = Math.round((parseInt(parts[1]) / parseInt(parts[2])) * 100);
-                            bar.style.width = `${percent}%`; detailField.innerText = `${percent}%`;
-                        }
-                    } catch(e) {}
-                }
-            }
-        } else { 
-            if(bar) bar.style.width = '100%';
-            if(detailField) detailField.innerText = '100%';
-            setTimeout(() => {
-                if(toast) { toast.classList.add('-translate-y-[200%]', 'opacity-0', 'pointer-events-none'); toast.classList.remove('translate-y-0', 'opacity-100'); }
-                setTimeout(() => { if(bar) bar.style.width = '0%'; }, 500);
-            }, 800);
-        }
-    }
-    
-    function cancelProcess() {
-        if(confirm('确定要停止当前任务吗？')) {
-            isCancelled = true;
-            document.getElementById('progressText').innerText = "正在取消...";
-            setTimeout(() => showLoading(false), 500);
-        }
-    }function checkForDuplicates() {
-        const seen = new Set();
-        let duplicates = 0;
-        imagesData.forEach(img => { const key = img.name + '_' + img.size; if (seen.has(key)) duplicates++; else seen.add(key); });
-        const alertBox = document.getElementById('duplicateAlert');
-        if (duplicates > 0) { alertBox.classList.remove('hidden'); document.getElementById('dupCount').innerText = duplicates; } 
-        else { alertBox.classList.add('hidden'); }
-    }function removeDuplicates() {
-        const seen = new Set();
-        const uniqueData = [];
-        let removedCount = 0;
-        imagesData.forEach(img => {
-            const key = img.name + '_' + img.size;
-            if (!seen.has(key)) { seen.add(key); uniqueData.push(img); } 
-            else { URL.revokeObjectURL(img.url); removedCount++; }
-        });
-        imagesData = uniqueData;
-        refreshGridHTML(); refreshUI(); calculateGroupBatch(); checkForDuplicates();
-        alert(`已移除 ${removedCount} 张重复图片`);
-    }
-
+    // 拖拽文件进入浏览器事件
+    document.addEventListener('dragover', e => { e.preventDefault(); document.getElementById('dragOverlay').classList.add('active'); });
+    document.addEventListener('dragleave', e => { if(e.relatedTarget === null) document.getElementById('dragOverlay').classList.remove('active'); });
+    document.addEventListener('drop', e => {
+        e.preventDefault();
+        document.getElementById('dragOverlay').classList.remove('active');
+        const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+        if(files.length > 0) handleFiles(files);
+    });
+    </script><script>
     function handleFiles(files) {
         if (!files.length) return;
+        // 修复：使用 DocumentFragment 优化大批量导入
         Array.from(files).forEach((file) => {
             imagesData.push({ url: URL.createObjectURL(file), name: file.name, size: file.size });
         });
@@ -463,27 +528,52 @@
 
     function refreshGridHTML() {
         const grid = document.getElementById('imageGrid');
+        // 保持空状态结构，如果为空则隐藏
         grid.innerHTML = '<div id="emptyState" class="col-span-full py-8 text-center" style="display:none"><span class="text-gray-400">导入图片</span></div>';
+        
         const fragment = document.createDocumentFragment();
+        // 循环渲染图片列表
         imagesData.forEach((imgObj, i) => {
             const div = document.createElement('div');
-            div.className = 'relative aspect-square rounded-xl overflow-hidden bg-gray-100 border border-gray-100 thumbnail-item active:opacity-80 transition cursor-pointer';
-            div.innerHTML = `<img src="${imgObj.url}" class="w-full h-full object-cover pointer-events-none">`;
-            div.onclick = () => openImageActions(i);
+            // 修复：添加 CSS contain 属性优化百张图片滑动性能
+            div.className = 'relative aspect-square rounded-xl overflow-hidden bg-gray-100 border border-gray-100 thumbnail-item active:opacity-80 transition cursor-grab active:cursor-grabbing';
+            div.style.contain = 'paint layout'; 
+            div.innerHTML = `<img src="${imgObj.url}" class="w-full h-full object-cover pointer-events-none select-none" loading="lazy">`; 
+            // 绑定点击事件，用于替换或删除
+            div.onmouseup = (e) => { openImageActions(i); };
             fragment.appendChild(div);
         });
         grid.appendChild(fragment);
-    }
 
+        // 重新初始化拖拽排序
+        if(sortableInstance) sortableInstance.destroy();
+        sortableInstance = new Sortable(grid, {
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            delay: 100, 
+            delayOnTouchOnly: true,
+            onEnd: function (evt) {
+                // 更新数据数组顺序
+                const item = imagesData.splice(evt.oldIndex, 1)[0];
+                imagesData.splice(evt.newIndex, 0, item);
+                refreshUI(); // 仅刷新计数，不完全重绘Grid
+            }
+        });
+    }
+    </script><script>
     function openImageActions(index) { targetImageIndex = index; document.getElementById('imageActionOverlay').style.display = 'block'; setTimeout(() => document.getElementById('imageActionSheet').classList.add('show'), 10); }
     function closeImageActions() { document.getElementById('imageActionSheet').classList.remove('show'); setTimeout(() => document.getElementById('imageActionOverlay').style.display = 'none', 300); }
+    
     function triggerReplace() { document.getElementById('replaceInput').click(); closeImageActions(); }
     function handleReplaceAction(files) { if(!files.length || targetImageIndex === -1) return; const file = files[0]; URL.revokeObjectURL(imagesData[targetImageIndex].url); imagesData[targetImageIndex] = { url: URL.createObjectURL(file), name: file.name, size: file.size }; refreshGridHTML(); checkForDuplicates(); document.getElementById('replaceInput').value = ''; }
+    
     function triggerDelete() { if(confirm('确定删除?')) { URL.revokeObjectURL(imagesData[targetImageIndex].url); imagesData.splice(targetImageIndex, 1); refreshGridHTML(); refreshUI(); calculateGroupBatch(); checkForDuplicates(); } closeImageActions(); }
+    
     function clearAll() { if(confirm('确定清空?')) { imagesData.forEach(i => URL.revokeObjectURL(i.url)); imagesData=[]; refreshGridHTML(); refreshUI(); checkForDuplicates(); } }
     
     function refreshUI() { document.getElementById('countBadge').innerText = imagesData.length; document.getElementById('emptyState').style.display = imagesData.length ? 'none' : 'flex'; document.getElementById('clearBtn').style.display = imagesData.length ? 'block' : 'none'; updateStickerPreview(); }
     function handleStickerFile(files) { if(!files.length) return; const img = new Image(); img.onload = () => { stickerImg = img; updateStickerPreview(); }; img.src = URL.createObjectURL(files[0]); }
+    
     function toggleCustomRatio() { document.getElementById('customRatioBox').style.display = (document.getElementById('aspectRatio').value === 'custom') ? 'flex' : 'none'; }
     function getCurrentRatio() {
         let ratio = parseFloat(document.getElementById('aspectRatio').value);
@@ -493,7 +583,9 @@
             ratio = cw / ch;
         }
         return ratio;
-    }function calculateGroupBatch() {
+    }
+    </script><script>
+    function calculateGroupBatch() {
         const cols = parseInt(document.getElementById('cols').value) || 3;
         const rowsInput = document.getElementById('group_rows').value;
         const total = imagesData.length;
@@ -534,76 +626,99 @@
         const range = document.getElementById('overlayOpacityRange');
         const input = document.getElementById('overlayOpacityInput');
         if (source === 'range') input.value = range.value;
-        else {
-            let val = parseFloat(input.value); if (isNaN(val)) val = 1;
-            if (val < 0) val = 0; if (val > 1) val = 1;
-            range.value = val;
-        }
+        else { let val = parseFloat(input.value); if (isNaN(val)) val = 1; if (val < 0) val = 0; if (val > 1) val = 1; range.value = val; }
     }
 
     function handleOverlayFile(files) {
         if (!files.length) return;
         const file = files[0]; const img = new Image();
-        img.onload = () => {
-            globalOverlayImg = img;
-            document.getElementById('overlayInfoBox').classList.remove('hidden');
-            document.getElementById('overlayName').innerText = file.name;
-            document.getElementById('overlayThumb').src = img.src;
-        };
+        img.onload = () => { globalOverlayImg = img; document.getElementById('overlayInfoBox').classList.remove('hidden'); document.getElementById('overlayName').innerText = file.name; document.getElementById('overlayThumb').src = img.src; };
         img.src = URL.createObjectURL(file);
     }
-    function clearOverlay() {
-        globalOverlayImg = null; document.getElementById('overlayInput').value = '';
-        document.getElementById('overlayInfoBox').classList.add('hidden');
-    }// --- 修复：预览覆盖层效果 (强制 3x3 且无序号) ---
+    function clearOverlay() { globalOverlayImg = null; document.getElementById('overlayInput').value = ''; document.getElementById('overlayInfoBox').classList.add('hidden'); }
+    </script><script>
     async function previewOverlayEffect() {
         if (!imagesData.length) return alert('请先添加拼图图片');
         if (!globalOverlayImg) return alert('请先选择一张覆盖层图片');
         showLoading(true, '生成预览...');
         try {
-            // 强制设置为 3列 x 3行 (9宫格)
-            const cols = 3;
-            const rows = 3;
-            const batchSize = 9; 
+            // 预览只取前9张
+            const cols = 3; const rows = 3; const batchSize = 9; 
             const firstBatchImgs = imagesData.slice(0, batchSize).map(d => d.url);
-            
-            // 如果图片不足9张，用重复图片填充以便填满九宫格预览，保证效果直观
-            while(firstBatchImgs.length < 9 && imagesData.length > 0) {
-                 firstBatchImgs.push(imagesData[0].url);
-            }
+            // 补齐9张以便预览效果
+            while(firstBatchImgs.length < 9 && imagesData.length > 0) { firstBatchImgs.push(imagesData[0].url); }
             
             const previewCellW = 200; 
-            const ratio = getCurrentRatio(); const previewCellH = Math.floor(previewCellW / ratio);
-            const gap = parseInt(document.getElementById('gap').value) || 0;
+            const ratio = getCurrentRatio(); 
+            const previewCellH = Math.floor(previewCellW / ratio);
+            const gap = parseInt(document.getElementById('gap').value) || 0; 
             const previewGap = Math.max(0, Math.floor(gap / 5)); 
-
-            const tempCanvas = document.createElement('canvas'); const tempCtx = tempCanvas.getContext('2d');
             
-            // --- 核心修正点 ---
-            // 参数顺序: ctx, imgs, rows, cols, w, h, gap, offset, startNum, maskIndices, applyMask, forceHideNums
-            // 我们传入 false 给 applyMask (不显示打码), 传入 true 给 forceHideNums (强制隐藏序号)
-            await drawAsync(tempCtx, firstBatchImgs, rows, cols, previewCellW, previewCellH, previewGap, 0, 
-                1, [], false, true); 
+            const tempCanvas = document.createElement('canvas'); 
+            const tempCtx = tempCanvas.getContext('2d');
             
-            const modal = document.getElementById('previewModal'); const header = document.getElementById('previewHeader');
-            const imgEl = document.getElementById('qualityPreviewImg'); const canvasEl = document.getElementById('enlargedPreviewCanvas');
-            header.classList.remove('hidden'); header.innerText = "效果预览 (强制3x3，无序号)";
-            canvasEl.classList.add('hidden'); imgEl.classList.remove('hidden');
+            // 调用核心绘图函数（强制无序号）
+            await drawAsync(tempCtx, firstBatchImgs, rows, cols, previewCellW, previewCellH, previewGap, 0, 1, [], false, true); 
             
-            tempCanvas.toBlob(blob => {
-                imgEl.src = URL.createObjectURL(blob); modal.style.display = 'flex'; showLoading(false);
+            const modal = document.getElementById('previewModal'); 
+            const header = document.getElementById('previewHeader'); 
+            const imgEl = document.getElementById('qualityPreviewImg'); 
+            const canvasEl = document.getElementById('enlargedPreviewCanvas');
+            
+            header.classList.remove('hidden'); 
+            header.innerText = "效果预览 (强制3x3，无序号)"; 
+            canvasEl.classList.add('hidden'); 
+            imgEl.classList.remove('hidden');
+            
+            tempCanvas.toBlob(blob => { 
+                imgEl.src = URL.createObjectURL(blob); 
+                modal.style.display = 'flex'; 
+                showLoading(false); 
             }, 'image/jpeg', 0.8);
         } catch (e) { console.error(e); alert('预览生成失败'); showLoading(false); }
     }
 
-    async function generate() { await runGeneration('normal'); }
-    async function generateMasked(type) { await runGeneration(type); }async function runGeneration(opType) {
-        if (!imagesData.length) return alert('请添加图片');
-        const container = document.getElementById('seamlessContainer'); container.innerHTML = ''; generatedBlobs = [];
+    // 进度提示 Toast 辅助函数
+    function showLoading(show, text) {
+        const toast = document.getElementById('progressToast');
+        const txt = document.getElementById('progressText');
+        if (show) {
+            toast.classList.remove('-translate-y-[200%]', 'opacity-0', 'pointer-events-none');
+            if(text) txt.innerText = text;
+        } else {
+            toast.classList.add('-translate-y-[200%]', 'opacity-0', 'pointer-events-none');
+        }
+    }
+    
+    function cancelProcess() { isCancelled = true; showLoading(false); alert('已取消生成'); }
+
+    // 关键优化：点击后先弹窗，强制等待50ms再执行计算，防止界面卡死
+    async function generate() { 
+        isCancelled = false;
+        showLoading(true, '准备开始...');
+        await new Promise(r => setTimeout(r, 50)); 
+        await runGeneration('normal'); 
+    }
+    
+    async function generateMasked(type) { 
+        isCancelled = false;
+        showLoading(true, '处理中...');
+        await new Promise(r => setTimeout(r, 50));
+        await runGeneration(type); 
+    }
+    </script><script>
+    async function runGeneration(opType) {
+        if (!imagesData.length) { showLoading(false); return alert('请添加图片'); }
+        
+        const container = document.getElementById('seamlessContainer'); 
+        container.innerHTML = ''; 
+        generatedBlobs = []; // 清空旧数据
         document.getElementById('realSizeContainer').classList.add('hidden');
+        
         const startNum = parseInt(document.getElementById('startNumber').value) || 1;
         let targets = imagesData.map(d => d.url);
         
+        // 解析打码目标
         const rawInput = document.getElementById('maskIndices').value;
         let maskTargets = [];
         const parts = rawInput.split(/[,，\s]+/);
@@ -611,177 +726,305 @@
             part = part.trim(); if (!part) return;
             if (part.includes('-')) {
                 const rangeParts = part.split('-');
-                if (rangeParts.length === 2) {
-                    const s = parseInt(rangeParts[0]); const e = parseInt(rangeParts[1]);
-                    if (!isNaN(s) && !isNaN(e)) { for (let k = Math.min(s,e); k <= Math.max(s,e); k++) maskTargets.push(k); }
-                }
+                if (rangeParts.length === 2) { const s = parseInt(rangeParts[0]); const e = parseInt(rangeParts[1]); if (!isNaN(s) && !isNaN(e)) { for (let k = Math.min(s,e); k <= Math.max(s,e); k++) maskTargets.push(k); } }
             } else { const num = parseInt(part); if (!isNaN(num)) maskTargets.push(num); }
         });
-        if (opType === 'repack') targets = targets.filter((_, i) => !maskTargets.includes(startNum + i));
+        
+        // 如果是剔除重排模式
+        if (opType === 'repack') {
+            targets = targets.filter((_, i) => !maskTargets.includes(startNum + i));
+        }
 
         const cols = parseInt(document.getElementById('cols').value) || 3;
         const rowsInput = document.getElementById('group_rows').value;
         const rows = rowsInput ? parseInt(rowsInput) : 50;
         const batchSize = cols * rows;
-
-        let qVal = parseInt(document.getElementById('customQ_unified').value);
-        if (isNaN(qVal) || qVal < 10) qVal = 10; if (qVal > 100) qVal = 100;
-        const isPng = (qVal === 100); const mimeType = isPng ? 'image/png' : 'image/jpeg';
-
-        const totalBatches = Math.ceil(targets.length / batchSize);
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
         
-        showLoading(true, '初始化...');
+        // 获取画质
+        let qVal = parseInt(document.getElementById('customQ_unified').value); 
+        if (isNaN(qVal) || qVal < 10) qVal = 10; 
+        if (qVal > 100) qVal = 100;
+        const isPng = (qVal === 100); 
+        const mimeType = isPng ? 'image/png' : 'image/jpeg';
+        
+        const totalBatches = Math.ceil(targets.length / batchSize);
+        const canvas = document.getElementById('canvas'); 
+        const ctx = canvas.getContext('2d');
+        const gap = parseInt(document.getElementById('gap').value) || 0; 
+
         try {
             for (let b = 0; b < totalBatches; b++) {
                 if (isCancelled) break;
-                // --- 核心修复：UI 渲染让步 ---
-                // 强制主线程暂停 80ms，让浏览器有时间渲染“处理中”的弹窗，避免卡顿造成的假死感
-                showLoading(true, `生成第 ${b+1} / ${totalBatches} 组...`);
-                await new Promise(r => setTimeout(r, 80)); 
-                // ---------------------------
-
+                showLoading(true, `正在生成拼图 ${b+1}/${totalBatches} 组...`);
+                await new Promise(r => setTimeout(r, 20)); // 让UI刷新
+                
                 const currentImgs = targets.slice(b*batchSize, Math.min((b+1)*batchSize, targets.length));
-                const ratio = getCurrentRatio();
-                const gap = parseInt(document.getElementById('gap').value) || 0;
+                const ratio = getCurrentRatio(); 
+                
+                // 动态计算宽度，防止爆Canvas内存
                 let cellW = 1500; 
-                if (cols * cellW > MAX_CANVAS_DIMENSION) cellW = Math.floor((MAX_CANVAS_DIMENSION - (cols*gap)) / cols);
+                if (cols * cellW > MAX_CANVAS_DIMENSION) {
+                    cellW = Math.floor((MAX_CANVAS_DIMENSION - (cols*gap)) / cols);
+                }
                 let cellH = Math.floor(cellW / ratio);
-
-                // 正常生成时，forceHideNums 参数不传（默认为 false）
+                
+                // 执行绘图
                 await drawAsync(ctx, currentImgs, Math.ceil(currentImgs.length/cols), cols, cellW, cellH, gap, b*batchSize, startNum, maskTargets, opType === 'apply');
+                
                 if (isCancelled) break;
-
+                
+                // 导出Blob
                 await new Promise(res => canvas.toBlob(blob => {
                     if (isCancelled) { res(); return; }
                     generatedBlobs.push(blob);
-                    const img = document.createElement('img'); img.src = URL.createObjectURL(blob); img.className = "w-full block border-b border-gray-100 last:border-0"; container.appendChild(img); res();
+                    
+                    // 在结果区显示缩略图
+                    const img = document.createElement('img'); 
+                    img.src = URL.createObjectURL(blob); 
+                    // 关键样式：w-full block 确保图片撑满容器宽度，高度自适应
+                    img.className = "w-full block border-b border-gray-100 last:border-0"; 
+                    container.appendChild(img); 
+                    res();
                 }, mimeType, isPng ? undefined : qVal / 100));
             }
-            if (!isCancelled) { document.getElementById('resultArea').classList.remove('hidden'); document.getElementById('resultArea').scrollIntoView({behavior:'smooth'}); updateRealSizeDisplay(); }
+            if (!isCancelled) { 
+                document.getElementById('resultArea').classList.remove('hidden'); 
+                // 滚动到结果区域
+                document.getElementById('resultArea').scrollIntoView({behavior:'smooth'}); 
+                updateRealSizeDisplay(); 
+            }
         } catch(e) { console.error(e); if(!isCancelled) alert('错误:'+e.message); }
         showLoading(false);
-    }// --- 修复：增加了 forceHideNums 参数，并赋默认值 false ---
+    }
+    
     async function drawAsync(ctx, imgs, rows, cols, w, h, gap, globalOffset, startNum, maskIndices, applyMask, forceHideNums = false) {
         if (isCancelled) return;
         const canvas = ctx.canvas;
-        canvas.width = cols * w + (cols-1) * gap; canvas.height = rows * h + (rows-1) * gap;
+        canvas.width = cols * w + (cols-1) * gap; 
+        canvas.height = rows * h + (rows-1) * gap;
         ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         const showNum = document.getElementById('showNum').checked;
-        const fontSize = parseInt(document.getElementById('fontSize').value);
+        const fontSize = parseInt(document.getElementById('fontSize').value) || 350;
         const fontPos = document.getElementById('fontPos').value;
+        const fontFamily = document.getElementById('fontFamily').value; 
+        const fontColor = document.getElementById('fontColor').value || '#FFFFFF';
+        const shadowColor = document.getElementById('fontShadowColor').value || '#000000';
         const lineStyle = document.querySelector('input[name="lineStyle"]:checked') ? document.querySelector('input[name="lineStyle"]:checked').value : 'cross';
 
         for (let i = 0; i < imgs.length; i++) {
             if (isCancelled) return;
+            // 提速优化：每处理30张图片暂停一帧
+            if (i % 30 === 0) await new Promise(r => setTimeout(r, 0)); 
+            
             const r = Math.floor(i / cols); const c = i % cols;
-            const x = c * (w + gap); const y = r * (h + gap);
+            const x = c * (w + gap); 
+            const y = r * (h + gap);
+            
             const currentNum = startNum + globalOffset + i;
             const img = new Image(); img.src = imgs[i];
-            await new Promise(resolve => { if(img.complete)resolve(); else img.onload=resolve; img.onerror=resolve; });
+            
+            await new Promise(resolve => { 
+                if(img.complete) resolve(); 
+                else { img.onload=resolve; img.onerror=resolve; } 
+            });
 
             ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
             const iRatio = img.width / img.height; const cRatio = w / h;
-            if (iRatio > cRatio) ctx.drawImage(img, x - (h*iRatio - w)/2, y, h*iRatio, h); else ctx.drawImage(img, x, y - (w/iRatio - h)/2, w, w/iRatio);
+            if (iRatio > cRatio) {
+                ctx.drawImage(img, x - (h*iRatio - w)/2, y, h*iRatio, h); 
+            } else {
+                ctx.drawImage(img, x, y - (w/iRatio - h)/2, w, w/iRatio);
+            }
             ctx.restore();
 
-            // --- 核心逻辑：判断是否显示序号 ---
-            // 只有当 (用户开启了显示序号) 且 (未强制隐藏) 时，才绘制
             if (showNum && forceHideNums !== true) {
-                ctx.fillStyle = '#FFFFFF'; ctx.strokeStyle = '#000000'; ctx.lineWidth = fontSize / 15; ctx.font = `bold ${fontSize}px sans-serif`;
+                ctx.save();
+                ctx.shadowColor = shadowColor;
+                ctx.shadowBlur = fontSize / 10;
+                ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+                ctx.fillStyle = fontColor; 
+                ctx.font = `bold ${fontSize}px ${fontFamily}`; 
+                
                 let tx = x + w/2, ty = y + h - fontSize/2;
-                if(fontPos === 'center') ty = y + h/2 + fontSize/3; else if(fontPos.includes('top')) ty = y + fontSize + 20;
-                if(fontPos.includes('left')) { tx = x + 20; ctx.textAlign = 'left'; } else if(fontPos.includes('right')) { tx = x + w - 20; ctx.textAlign = 'right'; } else ctx.textAlign = 'center';
-                ctx.strokeText(currentNum, tx, ty); ctx.fillText(currentNum, tx, ty);
+                if(fontPos === 'center') ty = y + h/2 + fontSize/3; 
+                else if(fontPos.includes('top')) ty = y + fontSize + 20;
+                
+                if(fontPos.includes('left')) { tx = x + 20; ctx.textAlign = 'left'; } 
+                else if(fontPos.includes('right')) { tx = x + w - 20; ctx.textAlign = 'right'; } 
+                else ctx.textAlign = 'center';
+                
+                ctx.fillText(currentNum, tx, ty);
+                ctx.restore(); 
             }
+            
             if (applyMask && maskIndices.includes(currentNum)) {
                 if (currentMaskMode === 'line') {
-                    ctx.beginPath(); ctx.strokeStyle = document.getElementById('maskColor').value; ctx.lineWidth = document.getElementById('maskWidth').value * (w/500) * 5; ctx.lineCap = 'round';
-                    if (lineStyle === 'cross') { ctx.moveTo(x+w*0.2, y+h*0.2); ctx.lineTo(x+w*0.8, y+h*0.8); ctx.moveTo(x+w*0.8, y+h*0.2); ctx.lineTo(x+w*0.2, y+h*0.8); } else { ctx.moveTo(x+w*0.2, y+h*0.8); ctx.lineTo(x+w*0.8, y+h*0.2); }
+                    ctx.beginPath(); 
+                    ctx.strokeStyle = document.getElementById('maskColor').value; 
+                    ctx.lineWidth = document.getElementById('maskWidth').value * (w/500) * 5; 
+                    ctx.lineCap = 'round';
+                    if (lineStyle === 'cross') { 
+                        ctx.moveTo(x+w*0.2, y+h*0.2); ctx.lineTo(x+w*0.8, y+h*0.8); 
+                        ctx.moveTo(x+w*0.8, y+h*0.2); ctx.lineTo(x+w*0.2, y+h*0.8); 
+                    } else { 
+                        ctx.moveTo(x+w*0.2, y+h*0.8); ctx.lineTo(x+w*0.8, y+h*0.2); 
+                    }
                     ctx.stroke();
                 } else if (currentMaskMode === 'image' && stickerImg) {
-                    const sizePct = document.getElementById('stickerSize').value / 100; const xPct = document.getElementById('stickerX').value / 100; const yPct = document.getElementById('stickerY').value / 100;
-                    const sw = w * sizePct; const sh = sw * (stickerImg.height / stickerImg.width);
+                    const sizePct = document.getElementById('stickerSize').value / 100; 
+                    const xPct = document.getElementById('stickerX').value / 100; 
+                    const yPct = document.getElementById('stickerY').value / 100;
+                    const sw = w * sizePct; 
+                    const sh = sw * (stickerImg.height / stickerImg.width);
                     ctx.drawImage(stickerImg, x + (w * xPct) - sw/2, y + (h * yPct) - sh/2, sw, sh);
                 }
             }
         }
         
-        // --- 绘制全局覆盖层 (纹理) ---
-        if (globalOverlayImg) {
-            ctx.save();
+        if (globalOverlayImg) { 
+            ctx.save(); 
             ctx.globalAlpha = parseFloat(document.getElementById('overlayOpacityInput').value); 
-            ctx.globalCompositeOperation = document.getElementById('overlayMode').value;
-            ctx.drawImage(globalOverlayImg, 0, 0, canvas.width, canvas.height);
-            ctx.restore();
+            ctx.globalCompositeOperation = document.getElementById('overlayMode').value; 
+            ctx.drawImage(globalOverlayImg, 0, 0, canvas.width, canvas.height); 
+            ctx.restore(); 
         }
-    }function updateRealSizeDisplay() {
+    }
+    </script>
+    <script>
+    function updateRealSizeDisplay() {
         if (!generatedBlobs.length) return;
-        const container = document.getElementById('realSizeContainer'); const totalText = document.getElementById('realTotalSize');
-        const detailBox = document.getElementById('groupSizeDetail'); const toggleBtn = document.getElementById('btnToggleSizes');
-        const combinedTip = document.getElementById('combinedSizeTip'); const combinedVal = document.getElementById('combinedSizeValue');
+        const container = document.getElementById('realSizeContainer'); 
+        const totalText = document.getElementById('realTotalSize');
+        const detailBox = document.getElementById('groupSizeDetail'); 
+        const toggleBtn = document.getElementById('btnToggleSizes');
+        const combinedTip = document.getElementById('combinedSizeTip'); 
+        const combinedVal = document.getElementById('combinedSizeValue');
         
-        let totalBytes = 0; detailBox.innerHTML = '';
+        let totalBytes = 0; 
+        detailBox.innerHTML = '';
         generatedBlobs.forEach((blob, index) => {
             totalBytes += blob.size;
             const item = document.createElement('div'); item.className = "px-2";
             item.innerHTML = `<span class="opacity-70">分组 ${index + 1}:</span> <span class="font-bold">${(blob.size / 1024 / 1024).toFixed(2)} MB</span>`;
             detailBox.appendChild(item);
         });
-        const totalMB = (totalBytes / 1024 / 1024).toFixed(2);
+        
+        const totalMB = (totalBytes / 1024 / 1024).toFixed(2); 
         totalText.innerText = `分卷总计: ${totalMB} MB`;
         
-        if (imagesData.length <= 100) { combinedTip.classList.remove('hidden'); combinedVal.innerText = `${totalMB} MB`; } 
-        else { combinedTip.classList.add('hidden'); }
-
+        // 超过100张不建议合并
+        if (imagesData.length <= 100) { 
+            combinedTip.classList.remove('hidden'); 
+            combinedVal.innerText = `${totalMB} MB`; 
+        } else { 
+            combinedTip.classList.add('hidden'); 
+        }
+        
         container.classList.remove('hidden');
-        if (generatedBlobs.length <= 1) { toggleBtn.classList.add('hidden'); detailBox.classList.add('hidden'); } 
-        else { toggleBtn.classList.remove('hidden'); detailBox.classList.add('hidden'); toggleBtn.innerText = `展开 ${generatedBlobs.length} 个分组详情 ▼`; }
+        if (generatedBlobs.length <= 1) { 
+            toggleBtn.classList.add('hidden'); detailBox.classList.add('hidden'); 
+        } else { 
+            toggleBtn.classList.remove('hidden'); detailBox.classList.add('hidden'); 
+            toggleBtn.innerText = `展开 ${generatedBlobs.length} 个分组详情 ▼`; 
+        }
     }
 
-    function toggleGroupSizes() {
-        const detailBox = document.getElementById('groupSizeDetail'); const btn = document.getElementById('btnToggleSizes');
-        if (detailBox.classList.contains('hidden')) { detailBox.classList.remove('hidden'); btn.innerText = '收起详情 ▲'; } 
-        else { detailBox.classList.add('hidden'); btn.innerText = `展开 ${generatedBlobs.length} 个分组详情 ▼`; }
+    function toggleGroupSizes() { 
+        const detailBox = document.getElementById('groupSizeDetail'); 
+        const btn = document.getElementById('btnToggleSizes'); 
+        if (detailBox.classList.contains('hidden')) { 
+            detailBox.classList.remove('hidden'); btn.innerText = '收起详情 ▲'; 
+        } else { 
+            detailBox.classList.add('hidden'); btn.innerText = `展开 ${generatedBlobs.length} 个分组详情 ▼`; 
+        } 
     }
-
-    function confirmDownload(type) {
-        if (!generatedBlobs.length) return alert('请先生成拼图');
-        const totalBytes = generatedBlobs.reduce((acc, b) => acc + b.size, 0);
-        const msg = `当前文件总大小为：${(totalBytes / 1024 / 1024).toFixed(2)} MB\n\n确认开始下载吗？`;
-        if (confirm(msg)) { if (type === 'zip') downloadZip(); else if (type === 'combine') combineAndDownload(); else if (type === 'parts') downloadAllParts(); }
+    
+    function confirmDownload(type) { 
+        if (!generatedBlobs.length) return alert('请先生成拼图'); 
+        const totalBytes = generatedBlobs.reduce((acc, b) => acc + b.size, 0); 
+        const msg = `当前文件总大小为：${(totalBytes / 1024 / 1024).toFixed(2)} MB\n\n确认开始下载吗？`; 
+        if (confirm(msg)) { 
+            if (type === 'zip') downloadZip(); 
+            else if (type === 'combine') combineAndDownload(); 
+            else if (type === 'parts') downloadAllParts(); 
+        } 
     }
-
+    </script><script>
     function downloadZip() {
         showLoading(true, '正在打包 ZIP...');
-        const zip = new JSZip(); const folder = zip.folder("拼图分组");
-        let qVal = parseInt(document.getElementById('customQ_unified').value); if (isNaN(qVal) || qVal < 10) qVal = 10;
+        const zip = new JSZip(); 
+        const folder = zip.folder("拼图分组");
+        let qVal = parseInt(document.getElementById('customQ_unified').value); 
+        if (isNaN(qVal) || qVal < 10) qVal = 10;
         const ext = (qVal === 100) ? 'png' : 'jpg';
+        
         generatedBlobs.forEach((blob, i) => { folder.file(`拼图_Part_${i+1}.${ext}`, blob); });
-        zip.generateAsync({type:"blob"}).then(function(content) { if(isCancelled) return; downloadBlob(content, `拼图打包_${new Date().getTime()}.zip`); showLoading(false); }).catch(function(e) { if(!isCancelled) alert('打包失败: ' + e.message); showLoading(false); });
-    }async function combineAndDownload() {
+        
+        zip.generateAsync({type:"blob"}).then(function(content) { 
+            if(isCancelled) return; 
+            downloadBlob(content, `拼图打包_${new Date().getTime()}.zip`); 
+            showLoading(false); 
+        }).catch(function(e) { 
+            if(!isCancelled) alert('打包失败: ' + e.message); 
+            showLoading(false); 
+        });
+    }
+    
+    async function combineAndDownload() {
         if (imagesData.length > 100) return alert('⚠️ 图片数量超过100张，禁止合并导出。\n\n请使用 "打包下载所有分组 (ZIP)"。');
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        let qVal = parseInt(document.getElementById('customQ_unified').value); if (isNaN(qVal) || qVal < 10) qVal = 10; if (qVal > 100) qVal = 100;
+        let qVal = parseInt(document.getElementById('customQ_unified').value); 
+        if (isNaN(qVal) || qVal < 10) qVal = 10; if (qVal > 100) qVal = 100;
         const isPng = (qVal === 100); const ext = isPng ? 'png' : 'jpg';
+        
         if (generatedBlobs.length === 1) { downloadBlob(generatedBlobs[0], `拼图_完整版.${ext}`); return; }
         
         showLoading(true, '正在合并...');
         try {
             const bitmaps = await Promise.all(generatedBlobs.map(b => createImageBitmap(b)));
             const totalH = bitmaps.reduce((sum, bmp) => sum + bmp.height, 0); const maxW = bitmaps[0].width;
-            if (maxW * totalH > (isMobile ? 16777216 : 50000000)) { showLoading(false); return alert('图片总像素过大，手机浏览器无法处理。\n请使用 "打包下载 (ZIP)"。'); }
-            const canvas = document.createElement('canvas'); canvas.width = maxW; canvas.height = totalH; const ctx = canvas.getContext('2d'); let y = 0;
-            for(let bmp of bitmaps) { if (isCancelled) break; ctx.drawImage(bmp, 0, y); y += bmp.height; }
-            if(!isCancelled) { canvas.toBlob(blob => { if (isCancelled) return; downloadBlob(blob, `拼图_合并版_${new Date().getTime()}.${ext}`); showLoading(false); }, isPng ? 'image/png' : 'image/jpeg', isPng ? undefined : qVal/100); }
+            
+            // iOS Safari Canvas 像素限制保护
+            if (maxW * totalH > (isMobile ? 16777216 : 50000000)) { 
+                showLoading(false); 
+                return alert('图片总像素过大，手机浏览器无法处理。\n请使用 "打包下载 (ZIP)"。'); 
+            }
+            
+            const canvas = document.createElement('canvas'); 
+            canvas.width = maxW; canvas.height = totalH; 
+            const ctx = canvas.getContext('2d'); 
+            let y = 0;
+            
+            for(let bmp of bitmaps) { 
+                if (isCancelled) break; 
+                ctx.drawImage(bmp, 0, y); 
+                y += bmp.height; 
+            }
+            
+            if(!isCancelled) { 
+                canvas.toBlob(blob => { 
+                    if (isCancelled) return; 
+                    downloadBlob(blob, `拼图_合并版_${new Date().getTime()}.${ext}`); 
+                    showLoading(false); 
+                }, isPng ? 'image/png' : 'image/jpeg', isPng ? undefined : qVal/100); 
+            }
         } catch(e) { if(!isCancelled) alert('合并失败，请使用ZIP打包。'); showLoading(false); }
     }
     
-    function downloadAllParts() { generatedBlobs.forEach((blob, i) => { setTimeout(() => { const ext = blob.type.includes('png') ? 'png' : 'jpg'; downloadBlob(blob, `拼图_Part_${i+1}.${ext}`); }, i * 300); }); }
-    function downloadBlob(blob, name) { const link = document.createElement('a'); link.download = name; link.href = URL.createObjectURL(blob); link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1000); }
-    
+    function downloadAllParts() { 
+        generatedBlobs.forEach((blob, i) => { 
+            setTimeout(() => { 
+                const ext = blob.type.includes('png') ? 'png' : 'jpg'; 
+                downloadBlob(blob, `拼图_Part_${i+1}.${ext}`); 
+            }, i * 300); 
+        }); 
+    }
+    function downloadBlob(blob, name) { 
+        const link = document.createElement('a'); link.download = name; link.href = URL.createObjectURL(blob); link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1000); 
+    }
+    </script><script>
+    // 自动保存与贴纸预览逻辑
     function switchMaskTab(mode) {
         currentMaskMode = mode;
         const lineTab = document.getElementById('tab-line'); const imgTab = document.getElementById('tab-image');
@@ -809,73 +1052,93 @@
         if (imagesData.length > 0) { const bgImg = new Image(); bgImg.src = imagesData[0].url; bgImg.onload = () => { drawPreviewContent(ctx, baseW, baseH, bgImg); modal.style.display = 'flex'; } } else { ctx.fillStyle = '#fff'; ctx.fillRect(0,0,baseW,baseH); modal.style.display = 'flex'; }
     }
 
+    // 设置保存
     const SETTINGS_KEY = 'puzzleSettings_Ultimate_V3';
     function saveSettings() {
-        const settings = {
-            cols: document.getElementById('cols').value, aspectRatio: document.getElementById('aspectRatio').value, customW: document.getElementById('customW').value, customH: document.getElementById('customH').value, showNum: document.getElementById('showNum').checked, startNumber: document.getElementById('startNumber').value, fontSize: document.getElementById('fontSize').value, fontPos: document.getElementById('fontPos').value, group_rows: document.getElementById('group_rows').value, customQ_unified: document.getElementById('customQ_unified').value
+        const settings = { 
+            cols: document.getElementById('cols').value, 
+            aspectRatio: document.getElementById('aspectRatio').value, 
+            customW: document.getElementById('customW').value, 
+            customH: document.getElementById('customH').value, 
+            showNum: document.getElementById('showNum').checked, 
+            startNumber: document.getElementById('startNumber').value, 
+            fontSize: document.getElementById('fontSize').value, 
+            fontPos: document.getElementById('fontPos').value, 
+            fontFamily: document.getElementById('fontFamily').value,
+            fontColor: document.getElementById('fontColor').value,
+            fontShadowColor: document.getElementById('fontShadowColor').value,
+            gap: document.getElementById('gap').value,
+            group_rows: document.getElementById('group_rows').value, 
+            customQ_unified: document.getElementById('customQ_unified').value 
         };
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     }
-    
+
     function loadSettings() {
         const saved = localStorage.getItem(SETTINGS_KEY); if (!saved) return;
         try {
             const s = JSON.parse(saved);
             if(s.cols) document.getElementById('cols').value = s.cols;
             if(s.aspectRatio) { document.getElementById('aspectRatio').value = s.aspectRatio; toggleCustomRatio(); }
-            if(s.customW) document.getElementById('customW').value = s.customW; if(s.customH) document.getElementById('customH').value = s.customH; if(s.showNum !== undefined) document.getElementById('showNum').checked = s.showNum; if(s.startNumber) document.getElementById('startNumber').value = s.startNumber; if(s.fontSize) document.getElementById('fontSize').value = s.fontSize; if(s.fontPos) document.getElementById('fontPos').value = s.fontPos; if(s.group_rows) document.getElementById('group_rows').value = s.group_rows; if(s.customQ_unified) document.getElementById('customQ_unified').value = s.customQ_unified;
+            if(s.customW) document.getElementById('customW').value = s.customW; 
+            if(s.customH) document.getElementById('customH').value = s.customH; 
+            if(s.showNum !== undefined) document.getElementById('showNum').checked = s.showNum; 
+            if(s.startNumber) document.getElementById('startNumber').value = s.startNumber; 
+            if(s.fontSize) document.getElementById('fontSize').value = s.fontSize; 
+            if(s.fontPos) document.getElementById('fontPos').value = s.fontPos; 
+            if(s.fontFamily) document.getElementById('fontFamily').value = s.fontFamily;
+            if(s.fontColor) document.getElementById('fontColor').value = s.fontColor;
+            if(s.fontShadowColor) document.getElementById('fontShadowColor').value = s.fontShadowColor;
+            if(s.gap) { document.getElementById('gap').value = s.gap; document.getElementById('gapValueDisplay').innerText = s.gap + 'px'; }
+            if(s.group_rows) document.getElementById('group_rows').value = s.group_rows; 
+            if(s.customQ_unified) document.getElementById('customQ_unified').value = s.customQ_unified;
             calculateGroupBatch(); 
         } catch(e) { console.error('读取设置失败', e); }
     }
     
-    function hardReset() { const modal = document.getElementById('resetAlert'); const backdrop = document.getElementById('resetBackdrop'); const content = document.getElementById('resetModal'); modal.classList.remove('hidden'); modal.classList.add('flex'); setTimeout(() => { backdrop.classList.remove('opacity-0'); content.classList.remove('opacity-0', 'scale-110'); content.classList.add('scale-100'); }, 10); }
+    // 查重功能
+    function checkForDuplicates() {
+        const names = imagesData.map(i => i.name + i.size);
+        const uniqueNames = new Set(names);
+        const diff = names.length - uniqueNames.size;
+        const alertBox = document.getElementById('duplicateAlert');
+        if (diff > 0) {
+            alertBox.classList.remove('hidden');
+            document.getElementById('dupCount').innerText = diff;
+        } else {
+            alertBox.classList.add('hidden');
+        }
+    }
+    
+    function removeDuplicates() {
+        const seen = new Set();
+        imagesData = imagesData.filter(item => {
+            const key = item.name + item.size;
+            const duplicate = seen.has(key);
+            seen.add(key);
+            if(duplicate) URL.revokeObjectURL(item.url);
+            return !duplicate;
+        });
+        refreshGridHTML(); refreshUI(); calculateGroupBatch(); checkForDuplicates();
+    }
+
+    function hardReset() { const modal = document.getElementById('resetAlert'); const backdrop = document.getElementById('resetBackdrop'); const content = document.getElementById('resetModal'); modal.classList.remove('hidden'); modal.classList.add('flex'); setTimeout(() => { backdrop.classList.remove('opacity-0'); content.classList.remove('opacity-0', 'scale-110'); content.classList.remove('scale-100'); content.classList.add('scale-100'); }, 10); }
     function closeResetAlert() { const modal = document.getElementById('resetAlert'); const backdrop = document.getElementById('resetBackdrop'); const content = document.getElementById('resetModal'); backdrop.classList.add('opacity-0'); content.classList.add('opacity-0', 'scale-110'); content.classList.remove('scale-100'); setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 200); }
     function confirmResetAction() { localStorage.removeItem(SETTINGS_KEY); location.reload(); }
-        // --- 新增：注意事项功能逻辑 ---
-    function initNotesCheck() {
-        const isHidden = localStorage.getItem('puzzle_hide_notes_v1'); 
-        if (!isHidden) {
-            const btn = document.getElementById('noteFloatBtn');
-            if(btn) btn.classList.remove('hidden');
-        }
+    
+    function initNotesCheck() { const isHidden = localStorage.getItem('puzzle_hide_notes_v1'); if (!isHidden) { const btn = document.getElementById('noteFloatBtn'); if(btn) btn.classList.remove('hidden'); } }
+    function showNotes() { const modal = document.getElementById('noteModal'); modal.style.display = 'flex'; const content = modal.querySelector('div'); content.classList.remove('scale-95', 'opacity-0'); content.classList.add('scale-100', 'opacity-100'); }
+    function closeNotes() { document.getElementById('noteModal').style.display = 'none'; }
+    function permanentCloseNotes() { 
+        if(confirm('确定不再显示此悬浮球吗？\n(您可以通过清除浏览器缓存来恢复)')) { 
+            localStorage.setItem('puzzle_hide_notes_v1', 'true'); 
+            closeNotes(); 
+            document.getElementById('noteFloatBtn').classList.add('hidden'); 
+        } 
     }
 
-    function showNotes() {
-        const modal = document.getElementById('noteModal');
-        modal.style.display = 'flex';
-        const content = modal.querySelector('div');
-        content.classList.remove('scale-95', 'opacity-0');
-        content.classList.add('scale-100', 'opacity-100');
-    }
-
-    function closeNotes() {
-        document.getElementById('noteModal').style.display = 'none';
-    }
-
-    function permanentCloseNotes() {
-        if(confirm('确定不再显示此悬浮球吗？\n(您可以通过清除浏览器缓存来恢复)')) {
-            localStorage.setItem('puzzle_hide_notes_v1', 'true');
-            closeNotes();
-            document.getElementById('noteFloatBtn').classList.add('hidden');
-        }
-    }
-
-        window.addEventListener('beforeunload', function (e) { if (imagesData.length > 0) { e.preventDefault(); e.returnValue = '确定要离开吗？'; return '确定要离开吗？'; } });
-
-    // 修正后的初始化代码
-    window.addEventListener('DOMContentLoaded', () => { 
-        loadSettings();      // 加载设置
-        initNotesCheck();    // 检查是否显示悬浮球
-        
-        // 绑定输入框保存设置的事件
-        const inputs = document.querySelectorAll('input, select'); 
-        inputs.forEach(input => { 
-            if(input.type !== 'file') { 
-                input.addEventListener('change', saveSettings); 
-                input.addEventListener('input', saveSettings); 
-            } 
-        }); 
-    });
+    window.addEventListener('beforeunload', function (e) { if (imagesData.length > 0) { e.preventDefault(); e.returnValue = '确定要离开吗？'; return '确定要离开吗？'; } });
+    window.addEventListener('DOMContentLoaded', () => { loadSettings(); initNotesCheck(); const inputs = document.querySelectorAll('input, select'); inputs.forEach(input => { if(input.type !== 'file') { input.addEventListener('change', saveSettings); input.addEventListener('input', saveSettings); } }); });
 </script>
 
 <div id="noteFloatBtn" class="fixed right-5 bottom-28 z-40 hidden transition-all duration-300 hover:scale-105">
@@ -884,32 +1147,84 @@
         <span>注意事项</span>
     </button>
 </div>
-
 <div id="noteModal" class="modal-overlay" onclick="closeNotes()">
     <div class="bg-white w-[85%] max-w-[320px] rounded-2xl p-6 relative shadow-2xl transform transition-all scale-100" onclick="event.stopPropagation()">
         <div class="flex items-center gap-2 mb-4">
-            <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-[#007AFF]">
+        <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-[#007AFF]">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             </div>
             <h3 class="text-[18px] font-bold text-gray-900">使用须知</h3>
         </div>
-        
         <div class="text-[14px] text-gray-600 leading-relaxed mb-6 space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-            <p>1. 建议使用 <b>Chrome</b> 或 <b>edg</b> 浏览器以获得最佳体验。</p>
-            <p>2. 如果图片超过 100 张，生成过程可能会有短暂卡顿。
-甚至第一组拼图是全黑色，如果遇到重新拼图。</p>
-            <p>3.多组图片导出，受浏览器影响，可能不会全部下载完图片。请尝试使用“打包下载(ZIP)”功能。</p>
-            <p>4. ❗️❗️❗️多图一定要调一下画质，不然图片太大了❗️调30%也不影响看图❗️❗️❗️</p>
-            <p>5.🈲二传❗️</p>
-            <p>6.❗️超过一百张图不会合并生成一张拼图， 请自行填写行列，分多张图导出❗️
-          
+            <p>1. 建议使用 <b>edg</b> 浏览器以获得最佳体验。</p>
+            <p>2.edg可以添加到手机主屏幕上使用。</p>
+            <p>3. 如果图片超过 100 张，生成过程可能会有短暂卡顿。甚至第一组拼图是全黑色，如果遇到重新拼图。</p>
+            <p>4. 多组图片导出，受浏览器影响，可能不会全部下载完图片。请尝试使用“打包下载(ZIP)”功能。</p>
+            <p>5. ❗️❗️❗️多图一定要调一下画质，不然图片太大了❗️调30%也不影响看图❗️❗️❗️</p>
+	            <p>6. 有时间老师们可以找平替的，一些原因有点想删链接了，，，₍˄·͈༝·͈˄₎◞ ̑̑</p>
+            <p>7. ❗️超过一百张图不会合并生成一张拼图， 请自行填写行列，分多张图导出❗️</p>
         </div>
-
         <div class="flex items-center gap-3 mt-2">
             <button onclick="permanentCloseNotes()" class="text-xs text-gray-400 font-medium py-2 px-2 active:text-gray-600 transition">不再显示</button>
             <button onclick="closeNotes()" class="flex-1 bg-[#007AFF] text-white text-[15px] font-bold py-3 rounded-xl shadow-lg shadow-blue-500/30 active:scale-95 transition">我知道了</button>
         </div>
     </div>
+</div><div id="updateNoticeModal" class="modal-overlay" style="z-index: 200;">
+    <div class="bg-white w-[85%] max-w-[320px] rounded-2xl p-6 relative shadow-2xl transform transition-all scale-100 animate-fade-in" onclick="event.stopPropagation()">
+        
+        <div class="flex items-center gap-2 mb-4">
+            <div class="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-[#34C759]">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>
+            </div>
+            <h3 class="text-[18px] font-bold text-gray-900">更新了一下</h3>
+        </div>
+
+        <div class="text-[14px] text-gray-600 leading-relaxed mb-6 space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+            <p class="font-bold text-black">✨ </p>
+            <ul class="list-disc pl-4 space-y-1">
+                <li>添加了可以在edg浏览器安装到屏幕的，在edg浏览器的添加到手机处添加</li>
+                <li>优化了一下界面，添加了图片间隙，保存每一次数值设置
+（觉得老师们有时间可以找个平替的，一些原因有点想删链接了₍˄·͈༝·͈˄₎◞ ̑̑，，，）</li>
+<li>最新版链接:https://x9353953-source.github.io/ikko/<li>
+               
+                
+            </ul>
+        </div>
+
+        <div class="flex items-center gap-3 mt-2">
+            <button onclick="dontShowUpdateAgain()" class="text-xs text-gray-400 font-medium py-2 px-2 active:text-gray-600 transition">不再提示</button>
+            <button onclick="closeUpdateModal()" class="flex-1 bg-[#34C759] text-white text-[15px] font-bold py-3 rounded-xl shadow-lg shadow-green-500/30 active:scale-95 transition">我知道了</button>
+        </div>
+    </div>
 </div>
+
+<script>
+    // 定义版本号，如果下次还有更新想再次弹出，只需修改这个字符串（例如改成 'update_notice_v2'）
+    const UPDATE_KEY = 'puzzle_update_notice_v1';
+
+    // 页面加载完成后检查
+    window.addEventListener('load', () => {
+        const hasRead = localStorage.getItem(UPDATE_KEY);
+        // 如果没有记录（说明是第一次或者是清空缓存后），则显示弹窗
+        if (!hasRead) {
+            setTimeout(() => {
+                const modal = document.getElementById('updateNoticeModal');
+                modal.style.display = 'flex';
+            }, 500); // 延迟0.5秒弹出，体验更好
+        }
+    });
+
+    // 关闭弹窗（仅本次关闭）
+    function closeUpdateModal() {
+        const modal = document.getElementById('updateNoticeModal');
+        modal.style.display = 'none';
+    }
+
+    // 不再提示（永久关闭，直到你修改版本号）
+    function dontShowUpdateAgain() {
+        localStorage.setItem(UPDATE_KEY, 'true');
+        closeUpdateModal();
+    }
+</script>
 </body>
-</html> 
+</html>
