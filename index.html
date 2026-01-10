@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="manifest.json">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>拼图Ultimate (Pro Max)</title>
@@ -9,7 +9,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#F2F2F7">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1685/1685230.png">
-
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script><style>
@@ -17,84 +16,98 @@
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
             background-color: #F2F2F7;
-            color: #000000;-webkit-tap-highlight-color: transparent;
+            color: #000000;
+            -webkit-tap-highlight-color: transparent;
             padding-bottom: 200px;
             overscroll-behavior-y: none;
         }
         /* 隐藏滚动条 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        /* iOS 卡片样式 */
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }/* iOS 卡片样式 */
         .ios-card {
             background: white;
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 1px 2px rgba(0,0,0,0.03);
             margin-bottom: 20px;
-            contain: content; 
-        }
-        /* 列表分割线 */
+            contain: content;
+        }/* 列表分割线 */
         .ios-divide > div:not(:last-child), 
         .ios-divide > label:not(:last-child),
-        .ios-divide > details > .divide-y > div:not(:last-child) { border-bottom: 0.5px solid #C6C6C8; }
-        
-        /* 输入框重置 */
-        input[type=number], select, input[type=text] { appearance: none; -webkit-appearance: none; background: transparent; }
-        
-        /* iOS 滑动条 */
-        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; height: 24px; margin: 0; padding: 0; cursor: pointer; }
-        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; background: #E5E5EA; border-radius: 2px; border: none; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 22px; width: 22px; border-radius: 50%; background: #ffffff; box-shadow: 0 2px 5px rgba(0,0,0,0.15); border: 0.5px solid rgba(0,0,0,0.04); margin-top: -9px; transition: transform 0.1s; }
+        .ios-divide > details > .divide-y > div:not(:last-child) { 
+            border-bottom: 0.5px solid #C6C6C8;
+        }/* 输入框重置 */
+        input[type=number], select, input[type=text] { 
+            appearance: none;
+            -webkit-appearance: none; 
+            background: transparent; 
+        }/* iOS 滑动条 */
+        input[type=range] { 
+            -webkit-appearance: none;
+            width: 100%; background: transparent; height: 24px; margin: 0; padding: 0; cursor: pointer;
+        }input[type=range]::-webkit-slider-runnable-track { 
+            width: 100%; height: 4px; background: #E5E5EA; border-radius: 2px; border: none;
+        }
+        input[type=range]::-webkit-slider-thumb { 
+            -webkit-appearance: none; height: 22px; width: 22px; border-radius: 50%; background: #ffffff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15); border: 0.5px solid rgba(0,0,0,0.04); margin-top: -9px; transition: transform 0.1s;
+        }
         input[type=range]:active::-webkit-slider-thumb { transform: scale(1.1); }/* 动画与模态框 */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 100; display: none; align-items: center; justify-content: center; }
-        .checkered-bg { background-color: #eee; background-image: linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%); background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px; }
-        .action-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: #F2F2F7; border-top-left-radius: 16px; border-top-right-radius: 16px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); z-index: 101; padding: 20px; padding-bottom: 40px; }
-        .action-sheet.show { transform: translateY(0); }
-        .animate-fade-in { animation: fadeIn 0.3s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        
-        /* 结果区域 - 修正：移除高度限制，允许页面自然滚动 */
+        .modal-overlay { 
+            position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
+            z-index: 100; display: none; align-items: center; justify-content: center; 
+        }
+        .checkered-bg { 
+            background-color: #eee;
+            background-image: linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%);
+            background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+        .action-sheet { 
+            position: fixed; bottom: 0; left: 0; right: 0; background: #F2F2F7;
+            border-top-left-radius: 16px; border-top-right-radius: 16px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); z-index: 101; padding: 20px; padding-bottom: 40px;
+        }
+        .action-sheet.show { transform: translateY(0); }.animate-fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }/* 结果区域 - 修改：固定窗口滚动 */
         .result-scroll-container {
-            /* 关键修改：取消 max-height 和 overflow-y，让图片自动撑开页面 */
-            min-height: 100px;
+            min-height: 50px; /* 调整高度 */
+            max-height: 50vh; 
+            overflow-y: auto; 
             background: #f9f9f9;
-            border-radius: 12px;
             padding: 10px;
             contain: content;
+            -webkit-overflow-scrolling: touch;
         }
-        
+
         /* 拖拽上传遮罩 */
         #dragOverlay {
-            position: fixed; inset: 0; background: rgba(0,122,255,0.1); backdrop-filter: blur(2px);
+            position: fixed;
+            inset: 0; background: rgba(0,122,255,0.1); backdrop-filter: blur(2px);
             z-index: 999; display: none; justify-content: center; align-items: center;
-            border: 4px dashed #007AFF; margin: 10px; border-radius: 20px; pointer-events: none;
+            border: 4px dashed #007AFF; margin: 10px;
+            border-radius: 20px; pointer-events: none;
         }
         #dragOverlay.active { display: flex; }
+
         .sortable-ghost { opacity: 0.4; background: #E5E5EA; } 
         
         #imageGrid {
-            content-visibility: auto; 
+            content-visibility: auto;
             contain-intrinsic-size: 300px;
         }
         .thumbnail-item { 
-            contain: paint layout; 
+            contain: paint layout;
         }
         
         #progressBarContainer { display: none !important; }
     </style>
-</head>
-<body class="antialiased"><div id="dragOverlay"><div class="text-[#007AFF] font-bold text-2xl bg-white/90 px-6 py-3 rounded-xl shadow-lg">松手释放图片</div></div>
-
-    <header class="sticky top-0 z-50 bg-[#F2F2F7]/90 backdrop-blur-xl border-b border-gray-200/50 supports-[backdrop-filter]:bg-[#F2F2F7]/60">
+</head><body class="antialiased"><div id="dragOverlay"><div class="text-[#007AFF] font-bold text-2xl bg-white/90 px-6 py-3 rounded-xl shadow-lg">松手释放图片</div></div><header class="sticky top-0 z-50 bg-[#F2F2F7]/90 backdrop-blur-xl border-b border-gray-200/50 supports-[backdrop-filter]:bg-[#F2F2F7]/60">
         <div class="max-w-2xl mx-auto px-5 py-3 flex justify-between items-center h-[52px]">
             <h1 class="text-[22px] font-bold tracking-tight text-black">拼图排序<span class="text-xs font-normal text-white bg-black px-1.5 py-0.5 rounded ml-1">Ultimate</span></h1>
             <div class="flex items-center gap-2">
                 <button onclick="hardReset()" class="bg-gray-100 text-gray-500 text-[13px] font-bold px-3 py-1.5 rounded-full shadow-sm active:bg-gray-200 transition flex items-center gap-1">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                     重置
-                </button>
-                <button onclick="document.getElementById('fileInput').click()" class="bg-white text-[#007AFF] text-[15px] font-bold px-4 py-1.5 rounded-full shadow-sm active:bg-gray-100 transition flex items-center gap-1">
+                </button><button onclick="document.getElementById('fileInput').value=''; document.getElementById('fileInput').click()" class="bg-white text-[#007AFF] text-[15px] font-bold px-4 py-1.5 rounded-full shadow-sm active:bg-gray-100 transition flex items-center gap-1">
                     <svg class="w-4 h-4 stroke-[3px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
                     添加
                 </button>
@@ -116,9 +129,7 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
-        </div>
-        
-        <div class="ios-card">
+        </div><div class="ios-card">
             <details class="group" open>
                 <summary class="flex justify-between items-center p-4 bg-white cursor-pointer select-none active:bg-gray-50 transition">
                     <span class="text-[13px] text-gray-500 uppercase font-medium pl-1">
@@ -129,9 +140,7 @@
                         <button onclick="event.preventDefault(); event.stopPropagation(); clearAll()" class="text-[#FF3B30] text-[13px] active:opacity-50 transition hidden" id="clearBtn">清空</button>
                         <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                     </div>
-                </summary>
-                
-                <div class="p-4 pt-0 border-t border-gray-100">
+                </summary><div class="p-4 pt-0 border-t border-gray-100">
                     <div id="imageGrid" class="grid grid-cols-4 gap-2 overflow-y-auto max-h-[220px] min-h-[100px] no-scrollbar touch-pan-y mt-4">
                         <div id="emptyState" class="col-span-full flex flex-col items-center justify-center py-8 space-y-3">
                             <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
@@ -139,15 +148,13 @@
                             </div>
                             <span class="text-gray-400 text-sm">导入图片 (点击可替换/长按拖拽)</span>
                         </div>
-                    </div>
-                    <div id="duplicateAlert" class="hidden mt-3 bg-yellow-50 border border-yellow-100 rounded-lg p-3 text-xs text-yellow-700 flex items-start gap-2">
+                    </div><div id="duplicateAlert" class="hidden mt-3 bg-yellow-50 border border-yellow-100 rounded-lg p-3 text-xs text-yellow-700 flex items-start gap-2">
                         <span class="font-bold">发现重复图片：</span> <span id="dupCount">0</span> 张。
                         <button onclick="removeDuplicates()" class="underline text-yellow-800 font-bold ml-1">一键去重</button>
                     </div>
                 </div>
             </details>
-        </div><div class="mb-2 pl-4 text-[13px] text-gray-500 uppercase font-medium">单元格与间距</div>
-        <div class="ios-card">
+        </div><div class="mb-2 pl-4 text-[13px] text-gray-500 uppercase font-medium">单元格与间距</div><div class="ios-card">
             <details class="group">
                 <summary class="flex items-center justify-between p-4 bg-white cursor-pointer select-none active:bg-gray-50 transition">
                     <div>
@@ -155,9 +162,7 @@
                         <div class="text-[10px] text-gray-400 mt-0.5">设置画布比例、留白间隙</div>
                     </div>
                     <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                </summary>
-                
-                <div class="divide-y divide-gray-200 border-t border-gray-100">
+                </summary><div class="divide-y divide-gray-200 border-t border-gray-100">
                     <div class="p-4 bg-white active:bg-gray-50 transition relative">
                         <div class="flex items-center justify-between">
                             <span class="text-[17px]">画布比例</span><div class="flex items-center gap-2">
@@ -171,8 +176,7 @@
                             </div>
                         </div>
                         <div class="text-[10px] text-gray-400 mt-1">设置单张图片的宽高比例</div>
-                    </div>
-                    <div class="p-4 bg-white active:bg-gray-50 transition">
+                    </div><div class="p-4 bg-white active:bg-gray-50 transition">
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-[17px]">图片间隙</span>
                             <span id="gapValueDisplay" class="text-[#007AFF] font-bold text-[15px]">0px</span>
@@ -196,39 +200,45 @@
                     <input type="checkbox" id="showNum" checked class="sr-only peer">
                     <div class="w-[51px] h-[31px] bg-[#E9E9EA] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-[27px] after:w-[27px] after:shadow-sm after:transition-all peer-checked:bg-[#34C759]"></div>
                 </label>
-            </div>
-            
-            <details class="group">
+            </div><details class="group">
                 <summary class="flex items-center justify-between p-4 bg-white cursor-pointer select-none active:bg-gray-50 transition">
                     <div>
                         <div class="text-[17px] text-[#007AFF]">序号详细设置</div>
                         <div class="text-[10px] text-gray-400 mt-0.5">设置序号大小、颜色、字体、起始位置</div>
                     </div>
                     <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                </summary>
-                
-                <div class="divide-y divide-gray-200 border-t border-gray-100">
+                </summary><div class="divide-y divide-gray-200 border-t border-gray-100">
                     <div class="flex items-center justify-between p-4 bg-white">
                         <span class="text-[17px]">起始数值</span>
                         <input type="number" id="startNumber" value="1" class="text-right text-[#007AFF] text-[17px] focus:outline-none w-20 bg-transparent rounded px-2 py-1" placeholder="1">
-                    </div><div class="flex items-center justify-between p-4 bg-white">
-                        <span class="text-[17px]">字号大小</span>
-                        <input type="number" id="fontSize" value="350" class="text-right text-[#007AFF] text-[17px] focus:outline-none w-20 bg-transparent rounded px-2 py-1" placeholder="150">
                     </div>
                     <div class="flex items-center justify-between p-4 bg-white">
+                        <span class="text-[17px]">字号大小</span>
+                        <input type="number" id="fontSize" value="350" class="text-right text-[#007AFF] text-[17px] focus:outline-none w-20 bg-transparent rounded px-2 py-1" placeholder="350">
+                    </div><div class="flex items-center justify-between p-4 bg-white">
                         <span class="text-[17px]">字体颜色</span>
                         <div class="flex items-center gap-2">
                             <input type="color" id="fontColor" value="#FFFFFF" class="w-8 h-8 rounded-full overflow-hidden border border-gray-200">
                         </div>
                     </div>
                     <div class="flex items-center justify-between p-4 bg-white">
-                        <span class="text-[17px]">阴影颜色</span>
+                        <span class="text-[17px]">描边颜色</span>
+                        <div class="flex items-center gap-2">
+                            <input type="color" id="fontStrokeColor" value="#000000" class="w-8 h-8 rounded-full overflow-hidden border border-gray-200">
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between p-4 bg-white">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[17px]">阴影颜色</span>
+                            <label class="flex items-center cursor-pointer gap-1 bg-gray-100 px-2 py-1 rounded-md text-xs text-gray-500 font-bold active:bg-gray-200 transition">
+                                <input type="checkbox" id="enableShadow" checked onchange="saveSettings()" class="accent-[#34C759]">
+                                <span>启用</span>
+                            </label>
+                        </div>
                         <div class="flex items-center gap-2">
                             <input type="color" id="fontShadowColor" value="#000000" class="w-8 h-8 rounded-full overflow-hidden border border-gray-200">
                         </div>
-                    </div>
-                    
-                    <div class="flex items-center justify-between p-4 bg-white">
+                    </div><div class="flex items-center justify-between p-4 bg-white">
                         <span class="text-[17px]">字体类型</span>
                         <select id="fontFamily" class="text-[#007AFF] text-[17px] pr-6 bg-transparent focus:outline-none appearance-none dir-rtl text-right w-40" onchange="saveSettings()">
                             <option value="sans-serif">默认 (无衬线)</option>
@@ -238,9 +248,7 @@
                             <option value="'Times New Roman', serif">Times New Roman</option>
                             <option value="cursive">手写风 (Cursive)</option>
                         </select>
-                    </div>
-
-                    <div class="flex items-center justify-between p-4 bg-white">
+                    </div><div class="flex items-center justify-between p-4 bg-white">
                         <span class="text-[17px]">位置</span>
                         <select id="fontPos" class="text-[#007AFF] text-[17px] pr-6 bg-transparent focus:outline-none appearance-none dir-rtl">
                             <option value="bottom-center">底部居中</option>
@@ -261,13 +269,11 @@
                         <div class="text-[10px] text-gray-400 mt-0.5">设置排列列数、分组方式、画质</div>
                     </div>
                     <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                </summary>
-                
-                <div class="divide-y divide-gray-200 border-t border-gray-100">
-                    <div class="p-4 bg-white">
+                </summary><div class="divide-y divide-gray-200 border-t border-gray-100"><div class="p-4 bg-white">
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-[17px] font-bold text-gray-800">排列与分组</span>
-                        </div><div class="grid grid-cols-2 gap-4">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
                             <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
                                  <label class="text-[11px] text-gray-500 block mb-1">列数 (横向)</label>
                                  <input type="number" id="cols" value="3" placeholder="默认:3" class="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-center text-sm font-bold text-[#007AFF] focus:border-[#007AFF] outline-none" oninput="calculateGroupBatch()">
@@ -368,9 +374,7 @@
                                 <span class="text-[10px] text-gray-400">输入数字 (如: 5, 12, 1-3)</span>
                             </div>
                             <input type="text" id="maskIndices" placeholder="如: 5, 12" class="text-right text-[#007AFF] text-[17px] focus:outline-none w-40 placeholder-gray-300 bg-gray-50 rounded px-2 py-1">
-                        </div>
-
-                        <div class="flex p-1 bg-gray-100 rounded-lg mb-4">
+                        </div><div class="flex p-1 bg-gray-100 rounded-lg mb-4">
                             <button onclick="switchMaskTab('line')" id="tab-line" class="flex-1 py-1.5 text-xs font-medium rounded-md bg-white shadow text-black transition-all">画线打码</button>
                             <button onclick="switchMaskTab('image')" id="tab-image" class="flex-1 py-1.5 text-xs font-medium rounded-md text-gray-500 transition-all">图片/贴纸</button>
                         </div><div id="mask-panel-line" class="animate-fade-in">
@@ -395,9 +399,9 @@
                                     <canvas id="stickerPreviewCanvas" class="w-full h-full object-contain"></canvas>
                                 </div>
                                 <div class="flex-1 flex flex-col justify-center space-y-4">
-                                    <div class="flex items-center text-xs text-gray-500"><span class="w-8 text-right mr-3">大小</span> <input type="range" id="stickerSize" min="10" max="200" value="50" class="flex-1"></div>
-                                    <div class="flex items-center text-xs text-gray-500"><span class="w-8 text-right mr-3">左右</span> <input type="range" id="stickerX" min="0" max="100" value="50" class="flex-1"></div>
-                                    <div class="flex items-center text-xs text-gray-500"><span class="w-8 text-right mr-3">上下</span> <input type="range" id="stickerY" min="0" max="100" value="50" class="flex-1"></div>
+                                    <div class="flex items-center text-xs text-gray-500"><span class="w-8 text-right mr-3">大小</span> <input type="range" id="stickerSize" min="10" max="200" value="50" class="flex-1" oninput="updateStickerPreview()"></div>
+                                    <div class="flex items-center text-xs text-gray-500"><span class="w-8 text-right mr-3">左右</span> <input type="range" id="stickerX" min="0" max="100" value="50" class="flex-1" oninput="updateStickerPreview()"></div>
+                                    <div class="flex items-center text-xs text-gray-500"><span class="w-8 text-right mr-3">上下</span> <input type="range" id="stickerY" min="0" max="100" value="50" class="flex-1" oninput="updateStickerPreview()"></div>
                                 </div>
                             </div>
                         </div>
@@ -407,54 +411,72 @@
                     </div>
                 </div>
             </details>
-        </div>
+        </div><div id="resultArea" class="hidden pb-10">
+            <div class="ios-card">
+                <details class="group" open id="resultDetails">
+                    <summary class="flex items-center justify-between p-4 bg-white cursor-pointer select-none active:bg-gray-50 transition">
+                        <div>
+                            <div class="text-[17px] font-bold text-[#34C759]">生成结果</div>
+                            <div class="text-[10px] text-gray-400 mt-0.5">预览与下载拼图</div>
+                        </div>
+                        <svg class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </summary>
+                    
+                    <div class="border-t border-gray-100 p-4">
+                        <div id="realSizeContainer" class="mb-4 bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800 hidden">
+                            <div class="flex justify-between items-center font-bold border-b border-green-200/50 pb-2 mb-2">
+                                <span class="flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    生成完成
+                                </span>
+                                <span id="realTotalSize">0 MB</span>
+                            </div>
+                            <div id="combinedSizeTip" class="text-xs text-green-600 mb-2 hidden flex justify-between">
+                                <span>若合并为一张长图约:</span>
+                                <span id="combinedSizeValue" class="font-bold">计算中...</span>
+                            </div>
+                            <div id="groupSizeDetail" class="pt-1 text-xs text-green-700 hidden grid grid-cols-2 gap-y-1"></div>
+                            <button onclick="toggleGroupSizes()" id="btnToggleSizes" class="text-[10px] underline mt-1 w-full text-left text-green-600 hidden">展开分组详情 ▼</button>
+                        </div>
+                        
+                        <details class="group/preview border border-gray-200 rounded-xl overflow-hidden bg-white mb-4" open>
+                            <summary class="p-3 bg-gray-50 text-xs font-bold text-gray-500 flex justify-between items-center cursor-pointer hover:bg-gray-100 transition">
+                                <span>🖼️ 图片预览区域 (点击折叠)</span>
+                                <svg class="w-3 h-3 text-gray-400 group-open/preview:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </summary>
+                            <div class="result-scroll-container bg-gray-50/50">
+                                <div id="seamlessContainer" class="w-full flex flex-col bg-white shadow-sm"></div>
+                            </div>
+                        </details>
 
-        <div id="resultArea" class="hidden pb-10">
-            <div class="text-center text-gray-400 text-xs mb-3 font-medium">预览结果 (已生成)</div>
-            <div id="realSizeContainer" class="mb-4 bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800 hidden">
-                <div class="flex justify-between items-center font-bold border-b border-green-200/50 pb-2 mb-2">
-                    <span class="flex items-center gap-1">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        生成完成
-                    </span>
-                    <span id="realTotalSize">0 MB</span>
-                </div>
-                <div id="combinedSizeTip" class="text-xs text-green-600 mb-2 hidden flex justify-between">
-                    <span>若合并为一张长图约:</span>
-                    <span id="combinedSizeValue" class="font-bold">计算中...</span>
-                </div>
-                <div id="groupSizeDetail" class="pt-1 text-xs text-green-700 hidden grid grid-cols-2 gap-y-1"></div>
-                <button onclick="toggleGroupSizes()" id="btnToggleSizes" class="text-[10px] underline mt-1 w-full text-left text-green-600 hidden">展开分组详情 ▼</button>
-            </div><div class="ios-card bg-white p-0 shadow-lg border border-gray-100">
-                <div class="result-scroll-container bg-gray-50/50">
-                    <div id="seamlessContainer" class="w-full flex flex-col bg-white shadow-sm"></div>
-                </div>
+                        <div class="grid grid-cols-2 gap-3 mt-4">
+                            <button onclick="confirmDownload('parts')" class="col-span-2 bg-[#34C759] text-white text-[16px] font-bold py-4 rounded-xl shadow-lg active:scale-[0.98] transition flex items-center justify-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                <span>逐张下载所有图片 (防漏图版)</span>
+                            </button>
+
+                            <button onclick="confirmDownload('combine')" class="bg-white text-black border border-gray-200 text-[14px] font-medium py-3 rounded-xl active:scale-95 transition">合并为一张长图</button>
+
+                            <button onclick="confirmDownload('zip')" class="bg-white text-[#007AFF] border border-gray-200 text-[14px] font-medium py-3 rounded-xl active:scale-95 transition">打包下载 (ZIP)</button>
+                        </div>
+                    </div>
+                </details>
             </div>
-            
-            <div class="grid grid-cols-2 gap-3 mt-4">
-                <button onclick="confirmDownload('zip')" class="col-span-2 bg-[#34C759] text-white text-[16px] font-bold py-4 rounded-xl shadow-lg active:scale-[0.98] transition flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
-                    <span>打包下载所有分组 (ZIP)</span>
-                </button>
-                <button onclick="confirmDownload('combine')" class="bg-white text-black border border-gray-200 text-[14px] font-medium py-3 rounded-xl active:scale-95 transition">合并为一张长图</button>
-                <button onclick="confirmDownload('parts')" class="bg-white text-[#007AFF] border border-gray-200 text-[14px] font-medium py-3 rounded-xl active:scale-95 transition">逐张下载</button>
-            </div>
-        </div>
-        <div class="py-10 pb-20 text-center">
+        </div><div class="py-10 pb-20 text-center">
             <div class="space-y-1">
                 <p class="text-xs text-gray-500 font-medium">拼图Ultimate (Pro Max)</p>
                 <p class="text-[10px] text-gray-400">Designed by ikko     🈲二传</p>
             </div>
         </div>
-    </main><div class="fixed bottom-8 left-0 right-0 px-4 z-40 pointer-events-none">
+    </main>
+
+    <div class="fixed bottom-8 left-0 right-0 px-4 z-40 pointer-events-none">
         <button onclick="generate()" class="pointer-events-auto w-full max-w-2xl mx-auto bg-white/80 backdrop-blur-md text-black border border-white/40 font-semibold text-[17px] py-3.5 rounded-full shadow-lg active:scale-[0.98] transition flex items-center justify-center gap-2">
             <span>✨ 开始生成拼图</span>
         </button>
     </div>
     
-    <canvas id="canvas" class="hidden"></canvas>
-    
-    <div id="previewModal" class="modal-overlay" onclick="this.style.display='none'">
+    <canvas id="canvas" class="hidden"></canvas><div id="previewModal" class="modal-overlay" onclick="this.style.display='none'">
         <div class="bg-white p-2 rounded-xl overflow-hidden shadow-2xl relative flex items-center justify-center flex-col" style="max-width:90%; max-height:80%;" onclick="event.stopPropagation()">
             <div id="previewHeader" class="w-full text-center py-2 text-sm font-bold text-gray-500 hidden">画质预览</div>
             <canvas id="enlargedPreviewCanvas" class="object-contain hidden" style="max-width:100%; max-height:70vh;"></canvas>
@@ -469,9 +491,7 @@
             <button onclick="triggerDelete()" class="w-full bg-white text-[#FF3B30] font-bold text-[17px] py-3.5 rounded-xl shadow-sm active:bg-gray-50">删除图片</button>
         </div>
         <button onclick="closeImageActions()" class="w-full bg-white text-black font-semibold text-[17px] py-3.5 rounded-xl shadow-sm mt-4 active:bg-gray-50">取消</button>
-    </div>
-    
-    <div id="resetAlert" class="fixed inset-0 z-[200] hidden items-center justify-center">
+    </div><div id="resetAlert" class="fixed inset-0 z-[200] hidden items-center justify-center">
         <div class="absolute inset-0 bg-black/40 transition-opacity duration-200 opacity-0" id="resetBackdrop"></div>
         <div class="relative bg-[#F2F2F2]/85 backdrop-blur-xl rounded-[14px] w-[270px] text-center shadow-2xl transform scale-110 transition-all duration-200 opacity-0 overflow-hidden" id="resetModal">
             <div class="pt-5 px-4 pb-4">
@@ -483,9 +503,60 @@
                 <button onclick="confirmResetAction()" class="flex-1 text-[17px] text-[#FF3B30] font-bold active:bg-gray-200/50 transition">重置</button>
             </div>
         </div>
+    </div><div id="noteFloatBtn" class="fixed right-5 bottom-28 z-40 hidden transition-all duration-300 hover:scale-105">
+        <button onclick="showNotes()" class="bg-white/90 backdrop-blur-md text-[#007AFF] shadow-[0_4px_12px_rgba(0,0,0,0.15)] border border-white/50 font-bold text-[13px] px-4 py-2.5 rounded-full flex items-center gap-1.5 active:scale-95 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span>注意事项</span>
+        </button>
     </div>
-    
-    <script>
+<div id="noteModal" class="modal-overlay" onclick="closeNotes()">
+    <div class="bg-white w-[85%] max-w-[320px] rounded-2xl p-6 relative shadow-2xl transform transition-all scale-100" onclick="event.stopPropagation()">
+        <div class="flex items-center gap-2 mb-4">
+            <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-[#007AFF]">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <h3 class="text-[18px] font-bold text-gray-900">使用须知</h3>
+        </div>
+        <div class="text-[14px] text-gray-600 leading-relaxed mb-6 space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+            <p>1. 建议使用 <b>edg</b> 浏览器以获得最佳体验。</p>
+            <p>2. 如果图片超过 100 张，生成过程可能会有短暂卡顿。甚至第一组拼图是全黑色，如果遇到重新拼图。</p>
+            <p>3. 多组图片导出，受浏览器影响，可能不会全部下载完图片。请尝试使用“打包下载(ZIP)”功能。</p>
+            <p>4. ❗️❗️❗️多图一定要调一下画质，不然图片太大了❗️调30%也不影响看图❗️❗️❗️</p>
+            <p>5. 老师们有时间可以找平替一些原因我可能会删链接，，，:0❗️</p>
+            <p>6. ❗️超过一百张图不会合并生成一张拼图， 请自行填写行列，分多张图导出❗️</p>
+            <p>7.可在edg浏览器选择 <b>添加到手机<b>安装到主屏幕，不用再点链接打开</p>
+        </div>
+        <div class="flex items-center gap-3 mt-2">
+            <button onclick="permanentCloseNotes()" class="text-xs text-gray-400 font-medium py-2 px-2 active:text-gray-600 transition">不再显示</button>
+            <button onclick="closeNotes()" class="flex-1 bg-[#007AFF] text-white text-[15px] font-bold py-3 rounded-xl shadow-lg shadow-blue-500/30 active:scale-95 transition">我知道了</button>
+        </div>
+    </div>
+</div><div id="updateNoticeModal" class="modal-overlay" style="z-index: 200;">
+        <div class="bg-white w-[85%] max-w-[320px] rounded-2xl p-6 relative shadow-2xl transform transition-all scale-100 animate-fade-in" onclick="event.stopPropagation()">
+            <div class="flex items-center gap-2 mb-4">
+                <div class="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-[#34C759]">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>
+                </div>
+                <h3 class="text-[18px] font-bold text-gray-900">优化了一下</h3>
+            </div>
+            <div class="text-[14px] text-gray-600 leading-relaxed mb-6 space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+                <p class="font-bold text-black">✨ ：</p>
+                <ul class="list-disc pl-4 space-y-1">
+                    <li><b>快捷打开</b>：edg浏览器可以安装到主屏幕，在edg的添加到手机处设置，序号阴影可关。</li>
+                    <li><b>防漏图下载</b>：可以多张图下载，不会漏图。（试过两百张分18组导出也不会漏图）</li>
+                    <li><b>板块都可以折叠打开</b>：修复了导入以及生成大量图片时的卡顿。</li>
+                    <li><b>:0</b>：，老师们有时间可以找平替，一些原因有点想删链接，，₍˄·͈༝·͈˄₎◞ ̑̑</li>
+                </ul>
+            </div>
+            <div class="flex items-center gap-3 mt-2">
+                <button onclick="dontShowUpdateAgain()" class="text-xs text-gray-400 font-medium py-2 px-2 active:text-gray-600 transition">不再提示</button>
+                <button onclick="closeUpdateModal()" class="flex-1 bg-[#34C759] text-white text-[15px] font-bold py-3 rounded-xl shadow-lg shadow-green-500/30 active:scale-95 transition">开始体验</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // Service Worker 注册
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('sw.js').then(registration => {
@@ -495,18 +566,19 @@
             });
         });
     }
-    </script><script>
+    
+    // 全局变量
     let imagesData = [];
-    let generatedBlobs = []; 
+    let generatedBlobs = [];
     let stickerImg = null;
     let currentMaskMode = 'line';
     let targetImageIndex = -1; 
     let isCancelled = false;
-    let globalOverlayImg = null; 
+    let globalOverlayImg = null;
     let sortableInstance = null;
-    const MAX_CANVAS_DIMENSION = 8192; // 限制Canvas最大尺寸防崩溃
+    const MAX_CANVAS_DIMENSION = 8192; 
 
-    // 拖拽文件进入浏览器事件
+    // 拖拽事件
     document.addEventListener('dragover', e => { e.preventDefault(); document.getElementById('dragOverlay').classList.add('active'); });
     document.addEventListener('dragleave', e => { if(e.relatedTarget === null) document.getElementById('dragOverlay').classList.remove('active'); });
     document.addEventListener('drop', e => {
@@ -514,38 +586,60 @@
         document.getElementById('dragOverlay').classList.remove('active');
         const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
         if(files.length > 0) handleFiles(files);
-    });
-    </script><script>
-    function handleFiles(files) {
+    });// 导入处理：静默修复版 - 优化大量图片导入
+    async function handleFiles(files) {
         if (!files.length) return;
-        // 修复：使用 DocumentFragment 优化大批量导入
-        Array.from(files).forEach((file) => {
-            imagesData.push({ url: URL.createObjectURL(file), name: file.name, size: file.size });
-        });
-        refreshGridHTML(); refreshUI(); calculateGroupBatch(); checkForDuplicates();
-        document.getElementById('fileInput').value = '';
-    }
-
-    function refreshGridHTML() {
-        const grid = document.getElementById('imageGrid');
-        // 保持空状态结构，如果为空则隐藏
-        grid.innerHTML = '<div id="emptyState" class="col-span-full py-8 text-center" style="display:none"><span class="text-gray-400">导入图片</span></div>';
         
+        // 关键缓冲：等待300ms让设备从相册返回后恢复内存
+        await new Promise(r => setTimeout(r, 300));
+
+        try {
+            const newImages = [];
+            const fileArray = Array.from(files);
+            const chunkSize = 50; 
+            for (let i = 0; i < fileArray.length; i += chunkSize) {
+                const chunk = fileArray.slice(i, i + chunkSize);
+                chunk.forEach((file) => {
+                    if (file.type.startsWith('image/') || file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+                        newImages.push({ 
+                            url: URL.createObjectURL(file), 
+                            name: file.name, 
+                            size: file.size 
+                        });
+                    }
+                });
+                if(fileArray.length > 50) await new Promise(r => setTimeout(r, 10));
+            }
+            if (newImages.length > 0) {
+                imagesData.push(...newImages);
+                refreshGridHTML();
+                refreshUI(); 
+                calculateGroupBatch(); 
+                checkForDuplicates();
+            }
+        } catch (e) {
+            console.error(e);
+            alert('导入出错：' + e.message);
+        } finally {
+            document.getElementById('fileInput').value = '';
+        }
+    }function refreshGridHTML() {
+        const grid = document.getElementById('imageGrid');
+        grid.innerHTML = '<div id="emptyState" class="col-span-full py-8 text-center" style="display:none"><span class="text-gray-400">导入图片</span></div>';
         const fragment = document.createDocumentFragment();
-        // 循环渲染图片列表
+        
+        // 渲染优化：限制一次性渲染的DOM数量，虽然这里为了保持逻辑完整全渲染，但CSS中开启了content-visibility
         imagesData.forEach((imgObj, i) => {
             const div = document.createElement('div');
-            // 修复：添加 CSS contain 属性优化百张图片滑动性能
             div.className = 'relative aspect-square rounded-xl overflow-hidden bg-gray-100 border border-gray-100 thumbnail-item active:opacity-80 transition cursor-grab active:cursor-grabbing';
+            div.style.contentVisibility = 'auto'; 
             div.style.contain = 'paint layout'; 
             div.innerHTML = `<img src="${imgObj.url}" class="w-full h-full object-cover pointer-events-none select-none" loading="lazy">`; 
-            // 绑定点击事件，用于替换或删除
             div.onmouseup = (e) => { openImageActions(i); };
             fragment.appendChild(div);
         });
         grid.appendChild(fragment);
 
-        // 重新初始化拖拽排序
         if(sortableInstance) sortableInstance.destroy();
         sortableInstance = new Sortable(grid, {
             animation: 150,
@@ -553,26 +647,23 @@
             delay: 100, 
             delayOnTouchOnly: true,
             onEnd: function (evt) {
-                // 更新数据数组顺序
                 const item = imagesData.splice(evt.oldIndex, 1)[0];
                 imagesData.splice(evt.newIndex, 0, item);
-                refreshUI(); // 仅刷新计数，不完全重绘Grid
+                refreshUI(); 
             }
         });
-    }
-    </script><script>
+    }    
     function openImageActions(index) { targetImageIndex = index; document.getElementById('imageActionOverlay').style.display = 'block'; setTimeout(() => document.getElementById('imageActionSheet').classList.add('show'), 10); }
     function closeImageActions() { document.getElementById('imageActionSheet').classList.remove('show'); setTimeout(() => document.getElementById('imageActionOverlay').style.display = 'none', 300); }
     
     function triggerReplace() { document.getElementById('replaceInput').click(); closeImageActions(); }
     function handleReplaceAction(files) { if(!files.length || targetImageIndex === -1) return; const file = files[0]; URL.revokeObjectURL(imagesData[targetImageIndex].url); imagesData[targetImageIndex] = { url: URL.createObjectURL(file), name: file.name, size: file.size }; refreshGridHTML(); checkForDuplicates(); document.getElementById('replaceInput').value = ''; }
-    
     function triggerDelete() { if(confirm('确定删除?')) { URL.revokeObjectURL(imagesData[targetImageIndex].url); imagesData.splice(targetImageIndex, 1); refreshGridHTML(); refreshUI(); calculateGroupBatch(); checkForDuplicates(); } closeImageActions(); }
     
     function clearAll() { if(confirm('确定清空?')) { imagesData.forEach(i => URL.revokeObjectURL(i.url)); imagesData=[]; refreshGridHTML(); refreshUI(); checkForDuplicates(); } }
     
-    function refreshUI() { document.getElementById('countBadge').innerText = imagesData.length; document.getElementById('emptyState').style.display = imagesData.length ? 'none' : 'flex'; document.getElementById('clearBtn').style.display = imagesData.length ? 'block' : 'none'; updateStickerPreview(); }
-    function handleStickerFile(files) { if(!files.length) return; const img = new Image(); img.onload = () => { stickerImg = img; updateStickerPreview(); }; img.src = URL.createObjectURL(files[0]); }
+    function refreshUI() { document.getElementById('countBadge').innerText = imagesData.length; document.getElementById('emptyState').style.display = imagesData.length ? 'none' : 'flex'; document.getElementById('clearBtn').style.display = imagesData.length ? 'block' : 'none'; if(typeof updateStickerPreview === 'function') updateStickerPreview(); }
+    function handleStickerFile(files) { if(!files.length) return; const img = new Image(); img.onload = () => { stickerImg = img; if(typeof updateStickerPreview === 'function') updateStickerPreview(); }; img.src = URL.createObjectURL(files[0]); }
     
     function toggleCustomRatio() { document.getElementById('customRatioBox').style.display = (document.getElementById('aspectRatio').value === 'custom') ? 'flex' : 'none'; }
     function getCurrentRatio() {
@@ -583,9 +674,7 @@
             ratio = cw / ch;
         }
         return ratio;
-    }
-    </script><script>
-    function calculateGroupBatch() {
+    }function calculateGroupBatch() {
         const cols = parseInt(document.getElementById('cols').value) || 3;
         const rowsInput = document.getElementById('group_rows').value;
         const total = imagesData.length;
@@ -601,9 +690,7 @@
             hint.innerHTML = `<span class="font-bold">Waiting...</span><span>请设置行和列</span>`;
             hint.className = "mt-3 text-[11px] text-gray-500 bg-[#F2F2F7] p-2 rounded flex items-center gap-2";
         }
-    }
-
-    function applyQualityPreset(select) { const val = select.value; if (val === 'none') return; const input = document.getElementById('customQ_unified'); if (val === 'custom') input.focus(); else input.value = Math.round(parseFloat(val) * 100); }
+    }    function applyQualityPreset(select) { const val = select.value; if (val === 'none') return; const input = document.getElementById('customQ_unified'); if (val === 'custom') input.focus(); else input.value = Math.round(parseFloat(val) * 100); }
     function validateQualityInput(el) { let val = parseInt(el.value); if (isNaN(val)) return; if (val > 100) el.value = 100; }
     
     async function previewQuality() {
@@ -614,15 +701,16 @@
         let qVal = parseInt(document.getElementById('customQ_unified').value); if (isNaN(qVal) || qVal < 10) qVal = 10; if (qVal > 100) qVal = 100;
         header.innerText = `画质预览 (当前: ${qVal}%)`;
         try {
-            const imgObj = imagesData[0]; const img = new Image(); img.src = imgObj.url; await new Promise(r => img.onload = r);
-            const cvs = document.createElement('canvas'); const scale = Math.min(1, 1000 / img.width); cvs.width = img.width * scale; cvs.height = img.height * scale;
+            const imgObj = imagesData[0];
+            const img = new Image(); img.src = imgObj.url; await new Promise(r => img.onload = r);
+            const cvs = document.createElement('canvas');
+            const scale = Math.min(1, 1000 / img.width); cvs.width = img.width * scale; cvs.height = img.height * scale;
             const ctx = cvs.getContext('2d'); ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
-            imgEl.src = cvs.toDataURL((qVal === 100) ? 'image/png' : 'image/jpeg', (qVal === 100) ? undefined : qVal / 100); modal.style.display = 'flex';
+            imgEl.src = cvs.toDataURL((qVal === 100) ? 'image/png' : 'image/jpeg', (qVal === 100) ? undefined : qVal / 100);
+            modal.style.display = 'flex';
         } catch(e) { console.error(e); alert('预览失败'); }
         showLoading(false);
-    }
-    
-    function syncOpacity(source) {
+    }function syncOpacity(source) {
         const range = document.getElementById('overlayOpacityRange');
         const input = document.getElementById('overlayOpacityInput');
         if (source === 'range') input.value = range.value;
@@ -636,36 +724,31 @@
         img.src = URL.createObjectURL(file);
     }
     function clearOverlay() { globalOverlayImg = null; document.getElementById('overlayInput').value = ''; document.getElementById('overlayInfoBox').classList.add('hidden'); }
-    </script><script>
     async function previewOverlayEffect() {
         if (!imagesData.length) return alert('请先添加拼图图片');
         if (!globalOverlayImg) return alert('请先选择一张覆盖层图片');
         showLoading(true, '生成预览...');
         try {
-            // 预览只取前9张
-            const cols = 3; const rows = 3; const batchSize = 9; 
+            const cols = 3;
+            const rows = 3; const batchSize = 9; 
             const firstBatchImgs = imagesData.slice(0, batchSize).map(d => d.url);
-            // 补齐9张以便预览效果
             while(firstBatchImgs.length < 9 && imagesData.length > 0) { firstBatchImgs.push(imagesData[0].url); }
             
-            const previewCellW = 200; 
+            const previewCellW = 200;
             const ratio = getCurrentRatio(); 
             const previewCellH = Math.floor(previewCellW / ratio);
-            const gap = parseInt(document.getElementById('gap').value) || 0; 
+            const gap = parseInt(document.getElementById('gap').value) || 0;
             const previewGap = Math.max(0, Math.floor(gap / 5)); 
             
             const tempCanvas = document.createElement('canvas'); 
             const tempCtx = tempCanvas.getContext('2d');
-            
-            // 调用核心绘图函数（强制无序号）
-            await drawAsync(tempCtx, firstBatchImgs, rows, cols, previewCellW, previewCellH, previewGap, 0, 1, [], false, true); 
-            
+            await drawAsync(tempCtx, firstBatchImgs, rows, cols, previewCellW, previewCellH, previewGap, 0, 1, [], false, true);
             const modal = document.getElementById('previewModal'); 
             const header = document.getElementById('previewHeader'); 
             const imgEl = document.getElementById('qualityPreviewImg'); 
             const canvasEl = document.getElementById('enlargedPreviewCanvas');
             
-            header.classList.remove('hidden'); 
+            header.classList.remove('hidden');
             header.innerText = "效果预览 (强制3x3，无序号)"; 
             canvasEl.classList.add('hidden'); 
             imgEl.classList.remove('hidden');
@@ -678,7 +761,6 @@
         } catch (e) { console.error(e); alert('预览生成失败'); showLoading(false); }
     }
 
-    // 进度提示 Toast 辅助函数
     function showLoading(show, text) {
         const toast = document.getElementById('progressToast');
         const txt = document.getElementById('progressText');
@@ -690,58 +772,54 @@
         }
     }
     
-    function cancelProcess() { isCancelled = true; showLoading(false); alert('已取消生成'); }
-
-    // 关键优化：点击后先弹窗，强制等待50ms再执行计算，防止界面卡死
-    async function generate() { 
+    function cancelProcess() { isCancelled = true; showLoading(false); alert('已取消生成'); }async function generate() { 
         isCancelled = false;
         showLoading(true, '准备开始...');
         await new Promise(r => setTimeout(r, 50)); 
-        await runGeneration('normal'); 
+        await runGeneration('normal');
     }
     
     async function generateMasked(type) { 
         isCancelled = false;
         showLoading(true, '处理中...');
         await new Promise(r => setTimeout(r, 50));
-        await runGeneration(type); 
+        await runGeneration(type);
     }
-    </script><script>
+    
+    // 核心修复：分批生成循环，增加强制GC暂停
     async function runGeneration(opType) {
         if (!imagesData.length) { showLoading(false); return alert('请添加图片'); }
         
-        const container = document.getElementById('seamlessContainer'); 
+        const container = document.getElementById('seamlessContainer');
         container.innerHTML = ''; 
-        generatedBlobs = []; // 清空旧数据
+        generatedBlobs = []; 
         document.getElementById('realSizeContainer').classList.add('hidden');
+        document.getElementById('resultArea').classList.add('hidden'); 
         
         const startNum = parseInt(document.getElementById('startNumber').value) || 1;
         let targets = imagesData.map(d => d.url);
         
-        // 解析打码目标
-        const rawInput = document.getElementById('maskIndices').value;
+        const rawInput = document.getElementById('maskIndices').value.trim();
+        if (opType === 'normal' && rawInput.length > 0) { opType = 'apply'; }
+
         let maskTargets = [];
-        const parts = rawInput.split(/[,，\s]+/);
+        const parts = rawInput.split(/[,，、\s]+/);
         parts.forEach(part => {
             part = part.trim(); if (!part) return;
-            if (part.includes('-')) {
-                const rangeParts = part.split('-');
+            const standardPart = part.replace(/[~—–]/g, '-');
+            if (standardPart.includes('-')) {
+                const rangeParts = standardPart.split('-');
                 if (rangeParts.length === 2) { const s = parseInt(rangeParts[0]); const e = parseInt(rangeParts[1]); if (!isNaN(s) && !isNaN(e)) { for (let k = Math.min(s,e); k <= Math.max(s,e); k++) maskTargets.push(k); } }
-            } else { const num = parseInt(part); if (!isNaN(num)) maskTargets.push(num); }
+            } else { const num = parseInt(standardPart); if (!isNaN(num)) maskTargets.push(num); }
         });
-        
-        // 如果是剔除重排模式
-        if (opType === 'repack') {
-            targets = targets.filter((_, i) => !maskTargets.includes(startNum + i));
-        }
+
+        if (opType === 'repack') { targets = targets.filter((_, i) => !maskTargets.includes(startNum + i)); }
 
         const cols = parseInt(document.getElementById('cols').value) || 3;
         const rowsInput = document.getElementById('group_rows').value;
         const rows = rowsInput ? parseInt(rowsInput) : 50;
         const batchSize = cols * rows;
-        
-        // 获取画质
-        let qVal = parseInt(document.getElementById('customQ_unified').value); 
+        let qVal = parseInt(document.getElementById('customQ_unified').value);
         if (isNaN(qVal) || qVal < 10) qVal = 10; 
         if (qVal > 100) qVal = 100;
         const isPng = (qVal === 100); 
@@ -750,57 +828,59 @@
         const totalBatches = Math.ceil(targets.length / batchSize);
         const canvas = document.getElementById('canvas'); 
         const ctx = canvas.getContext('2d');
-        const gap = parseInt(document.getElementById('gap').value) || 0; 
+        const gap = parseInt(document.getElementById('gap').value) || 0;
 
         try {
             for (let b = 0; b < totalBatches; b++) {
                 if (isCancelled) break;
-                showLoading(true, `正在生成拼图 ${b+1}/${totalBatches} 组...`);
-                await new Promise(r => setTimeout(r, 20)); // 让UI刷新
+                // 内存修复：每组生成前强制等待，让浏览器回收上一组的内存
+                showLoading(true, `正在生成 ${b+1}/${totalBatches} 组... `);
+                await new Promise(r => setTimeout(r, 200)); 
                 
                 const currentImgs = targets.slice(b*batchSize, Math.min((b+1)*batchSize, targets.length));
                 const ratio = getCurrentRatio(); 
                 
-                // 动态计算宽度，防止爆Canvas内存
-                let cellW = 1500; 
+                let cellW = 1500;
                 if (cols * cellW > MAX_CANVAS_DIMENSION) {
                     cellW = Math.floor((MAX_CANVAS_DIMENSION - (cols*gap)) / cols);
                 }
                 let cellH = Math.floor(cellW / ratio);
-                
-                // 执行绘图
+
+                // 调用绘制核心
                 await drawAsync(ctx, currentImgs, Math.ceil(currentImgs.length/cols), cols, cellW, cellH, gap, b*batchSize, startNum, maskTargets, opType === 'apply');
                 
+                currentImgs.length = 0; // 清空引用
+
                 if (isCancelled) break;
                 
-                // 导出Blob
                 await new Promise(res => canvas.toBlob(blob => {
                     if (isCancelled) { res(); return; }
                     generatedBlobs.push(blob);
                     
-                    // 在结果区显示缩略图
                     const img = document.createElement('img'); 
                     img.src = URL.createObjectURL(blob); 
-                    // 关键样式：w-full block 确保图片撑满容器宽度，高度自适应
                     img.className = "w-full block border-b border-gray-100 last:border-0"; 
                     container.appendChild(img); 
+                    
+                    // 绘制完立即清理 Canvas，防止显存残留
+                    ctx.clearRect(0,0,canvas.width, canvas.height);
+                    canvas.width = 1; canvas.height = 1;
                     res();
                 }, mimeType, isPng ? undefined : qVal / 100));
             }
             if (!isCancelled) { 
-                document.getElementById('resultArea').classList.remove('hidden'); 
-                // 滚动到结果区域
-                document.getElementById('resultArea').scrollIntoView({behavior:'smooth'}); 
-                updateRealSizeDisplay(); 
+                document.getElementById('resultArea').classList.remove('hidden');
+                document.getElementById('resultDetails').open = true;
+                document.getElementById('resultDetails').scrollIntoView({behavior:'smooth'}); 
+                if (typeof updateRealSizeDisplay === 'function') updateRealSizeDisplay();
             }
-        } catch(e) { console.error(e); if(!isCancelled) alert('错误:'+e.message); }
+        } catch(e) { console.error(e); if(!isCancelled) alert('生成过程中断:\n' + e.message + '\n\n建议：减少单组图片数量或降低画质。'); }
         showLoading(false);
-    }
-    
+    }// 异步绘制核心 - 第一部分：准备与加载
     async function drawAsync(ctx, imgs, rows, cols, w, h, gap, globalOffset, startNum, maskIndices, applyMask, forceHideNums = false) {
         if (isCancelled) return;
         const canvas = ctx.canvas;
-        canvas.width = cols * w + (cols-1) * gap; 
+        canvas.width = cols * w + (cols-1) * gap;
         canvas.height = rows * h + (rows-1) * gap;
         ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, canvas.width, canvas.height);
         
@@ -809,43 +889,59 @@
         const fontPos = document.getElementById('fontPos').value;
         const fontFamily = document.getElementById('fontFamily').value; 
         const fontColor = document.getElementById('fontColor').value || '#FFFFFF';
+        const strokeColor = document.getElementById('fontStrokeColor').value || '#000000';
         const shadowColor = document.getElementById('fontShadowColor').value || '#000000';
+        const enableShadow = document.getElementById('enableShadow').checked;
         const lineStyle = document.querySelector('input[name="lineStyle"]:checked') ? document.querySelector('input[name="lineStyle"]:checked').value : 'cross';
 
         for (let i = 0; i < imgs.length; i++) {
             if (isCancelled) return;
-            // 提速优化：每处理30张图片暂停一帧
-            if (i % 30 === 0) await new Promise(r => setTimeout(r, 0)); 
+            // 关键优化：每绘制30张暂停一帧，防止主线程卡死导致浏览器崩溃
+            if (i % 30 === 0) await new Promise(r => setTimeout(r, 10)); 
             
-            const r = Math.floor(i / cols); const c = i % cols;
-            const x = c * (w + gap); 
+            const r = Math.floor(i / cols);
+            const c = i % cols;
+            const x = c * (w + gap);
             const y = r * (h + gap);
             
             const currentNum = startNum + globalOffset + i;
-            const img = new Image(); img.src = imgs[i];
+            const img = new Image(); 
             
+            // 健壮的图片加载：加载失败不抛错，而是标记
             await new Promise(resolve => { 
-                if(img.complete) resolve(); 
-                else { img.onload=resolve; img.onerror=resolve; } 
-            });
-
-            ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
-            const iRatio = img.width / img.height; const cRatio = w / h;
-            if (iRatio > cRatio) {
-                ctx.drawImage(img, x - (h*iRatio - w)/2, y, h*iRatio, h); 
-            } else {
-                ctx.drawImage(img, x, y - (w/iRatio - h)/2, w, w/iRatio);
+                img.onload = resolve; 
+                img.onerror = () => { img.isBroken = true; resolve(); }; 
+                img.src = imgs[i];
+            });// 绘制逻辑下半部分：绘制与内存释放
+            try {
+                if (img.isBroken || img.naturalWidth === 0) {
+                    // 如果图片损坏，绘制一个明显的错误占位符
+                    ctx.fillStyle = '#f9f9f9';
+                    ctx.fillRect(x, y, w, h);
+                    ctx.fillStyle = '#ff3b30';
+                    ctx.font = `bold ${w/10}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText('❌图片损坏', x + w/2, y + h/2);
+                } else {
+                    ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+                    const iRatio = img.width / img.height; const cRatio = w / h;
+                    if (iRatio > cRatio) { ctx.drawImage(img, x - (h*iRatio - w)/2, y, h*iRatio, h); } 
+                    else { ctx.drawImage(img, x, y - (w/iRatio - h)/2, w, w/iRatio); }
+                    ctx.restore();
+                }
+            } catch (err) {
+                console.warn(`跳过损坏图片 index:${i}`, err);
+                ctx.fillStyle = '#eee'; ctx.fillRect(x, y, w, h); 
+            } finally {
+                // ！！！至关重要！！！：立即断开引用并移除，防止内存累积
+                img.src = ''; 
+                img.remove();
             }
-            ctx.restore();
 
+            // 绘制序号
             if (showNum && forceHideNums !== true) {
                 ctx.save();
-                ctx.shadowColor = shadowColor;
-                ctx.shadowBlur = fontSize / 10;
-                ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
-                ctx.fillStyle = fontColor; 
                 ctx.font = `bold ${fontSize}px ${fontFamily}`; 
-                
                 let tx = x + w/2, ty = y + h - fontSize/2;
                 if(fontPos === 'center') ty = y + h/2 + fontSize/3; 
                 else if(fontPos.includes('top')) ty = y + fontSize + 20;
@@ -853,14 +949,30 @@
                 if(fontPos.includes('left')) { tx = x + 20; ctx.textAlign = 'left'; } 
                 else if(fontPos.includes('right')) { tx = x + w - 20; ctx.textAlign = 'right'; } 
                 else ctx.textAlign = 'center';
-                
+
+                ctx.lineWidth = fontSize / 12;
+                ctx.strokeStyle = strokeColor; 
+                ctx.lineJoin = 'round';
+                ctx.miterLimit = 2;
+                ctx.strokeText(currentNum, tx, ty);
+
+                if (enableShadow) {
+                    ctx.shadowColor = shadowColor;
+                    ctx.shadowBlur = fontSize / 10;
+                    ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+                } else {
+                    ctx.shadowColor = 'transparent';
+                    ctx.shadowBlur = 0;
+                }
+                ctx.fillStyle = fontColor;
                 ctx.fillText(currentNum, tx, ty);
                 ctx.restore(); 
             }
             
+            // 绘制打码
             if (applyMask && maskIndices.includes(currentNum)) {
                 if (currentMaskMode === 'line') {
-                    ctx.beginPath(); 
+                    ctx.beginPath();
                     ctx.strokeStyle = document.getElementById('maskColor').value; 
                     ctx.lineWidth = document.getElementById('maskWidth').value * (w/500) * 5; 
                     ctx.lineCap = 'round';
@@ -872,10 +984,10 @@
                     }
                     ctx.stroke();
                 } else if (currentMaskMode === 'image' && stickerImg) {
-                    const sizePct = document.getElementById('stickerSize').value / 100; 
+                    const sizePct = document.getElementById('stickerSize').value / 100;
                     const xPct = document.getElementById('stickerX').value / 100; 
                     const yPct = document.getElementById('stickerY').value / 100;
-                    const sw = w * sizePct; 
+                    const sw = w * sizePct;
                     const sh = sw * (stickerImg.height / stickerImg.width);
                     ctx.drawImage(stickerImg, x + (w * xPct) - sw/2, y + (h * yPct) - sh/2, sw, sh);
                 }
@@ -883,22 +995,19 @@
         }
         
         if (globalOverlayImg) { 
-            ctx.save(); 
+            ctx.save();
             ctx.globalAlpha = parseFloat(document.getElementById('overlayOpacityInput').value); 
             ctx.globalCompositeOperation = document.getElementById('overlayMode').value; 
             ctx.drawImage(globalOverlayImg, 0, 0, canvas.width, canvas.height); 
-            ctx.restore(); 
+            ctx.restore();
         }
-    }
-    </script>
-    <script>
-    function updateRealSizeDisplay() {
+    }function updateRealSizeDisplay() {
         if (!generatedBlobs.length) return;
         const container = document.getElementById('realSizeContainer'); 
         const totalText = document.getElementById('realTotalSize');
         const detailBox = document.getElementById('groupSizeDetail'); 
         const toggleBtn = document.getElementById('btnToggleSizes');
-        const combinedTip = document.getElementById('combinedSizeTip'); 
+        const combinedTip = document.getElementById('combinedSizeTip');
         const combinedVal = document.getElementById('combinedSizeValue');
         
         let totalBytes = 0; 
@@ -909,56 +1018,55 @@
             item.innerHTML = `<span class="opacity-70">分组 ${index + 1}:</span> <span class="font-bold">${(blob.size / 1024 / 1024).toFixed(2)} MB</span>`;
             detailBox.appendChild(item);
         });
-        
         const totalMB = (totalBytes / 1024 / 1024).toFixed(2); 
         totalText.innerText = `分卷总计: ${totalMB} MB`;
         
-        // 超过100张不建议合并
         if (imagesData.length <= 100) { 
-            combinedTip.classList.remove('hidden'); 
+            combinedTip.classList.remove('hidden');
             combinedVal.innerText = `${totalMB} MB`; 
         } else { 
-            combinedTip.classList.add('hidden'); 
+            combinedTip.classList.add('hidden');
         }
         
         container.classList.remove('hidden');
         if (generatedBlobs.length <= 1) { 
-            toggleBtn.classList.add('hidden'); detailBox.classList.add('hidden'); 
+            toggleBtn.classList.add('hidden'); detailBox.classList.add('hidden');
         } else { 
-            toggleBtn.classList.remove('hidden'); detailBox.classList.add('hidden'); 
+            toggleBtn.classList.remove('hidden'); detailBox.classList.add('hidden');
             toggleBtn.innerText = `展开 ${generatedBlobs.length} 个分组详情 ▼`; 
         }
     }
 
     function toggleGroupSizes() { 
-        const detailBox = document.getElementById('groupSizeDetail'); 
+        const detailBox = document.getElementById('groupSizeDetail');
         const btn = document.getElementById('btnToggleSizes'); 
         if (detailBox.classList.contains('hidden')) { 
-            detailBox.classList.remove('hidden'); btn.innerText = '收起详情 ▲'; 
+            detailBox.classList.remove('hidden');
+            btn.innerText = '收起详情 ▲'; 
         } else { 
-            detailBox.classList.add('hidden'); btn.innerText = `展开 ${generatedBlobs.length} 个分组详情 ▼`; 
+            detailBox.classList.add('hidden');
+            btn.innerText = `展开 ${generatedBlobs.length} 个分组详情 ▼`; 
         } 
     }
     
     function confirmDownload(type) { 
-        if (!generatedBlobs.length) return alert('请先生成拼图'); 
+        if (!generatedBlobs.length) return alert('请先生成拼图');
         const totalBytes = generatedBlobs.reduce((acc, b) => acc + b.size, 0); 
-        const msg = `当前文件总大小为：${(totalBytes / 1024 / 1024).toFixed(2)} MB\n\n确认开始下载吗？`; 
+        const msg = `当前文件总大小为：${(totalBytes / 1024 / 1024).toFixed(2)} MB\n\n确认开始下载吗？`;
         if (confirm(msg)) { 
-            if (type === 'zip') downloadZip(); 
+            if (type === 'zip') downloadZip();
             else if (type === 'combine') combineAndDownload(); 
-            else if (type === 'parts') downloadAllParts(); 
+            else if (type === 'parts') downloadAllParts();
         } 
     }
-    </script><script>
+
     function downloadZip() {
         showLoading(true, '正在打包 ZIP...');
         const zip = new JSZip(); 
         const folder = zip.folder("拼图分组");
-        let qVal = parseInt(document.getElementById('customQ_unified').value); 
+        let qVal = parseInt(document.getElementById('customQ_unified').value);
         if (isNaN(qVal) || qVal < 10) qVal = 10;
         const ext = (qVal === 100) ? 'png' : 'jpg';
-        
         generatedBlobs.forEach((blob, i) => { folder.file(`拼图_Part_${i+1}.${ext}`, blob); });
         
         zip.generateAsync({type:"blob"}).then(function(content) { 
@@ -969,13 +1077,12 @@
             if(!isCancelled) alert('打包失败: ' + e.message); 
             showLoading(false); 
         });
-    }
-    
-    async function combineAndDownload() {
+    }async function combineAndDownload() {
         if (imagesData.length > 100) return alert('⚠️ 图片数量超过100张，禁止合并导出。\n\n请使用 "打包下载所有分组 (ZIP)"。');
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         let qVal = parseInt(document.getElementById('customQ_unified').value); 
-        if (isNaN(qVal) || qVal < 10) qVal = 10; if (qVal > 100) qVal = 100;
+        if (isNaN(qVal) || qVal < 10) qVal = 10;
+        if (qVal > 100) qVal = 100;
         const isPng = (qVal === 100); const ext = isPng ? 'png' : 'jpg';
         
         if (generatedBlobs.length === 1) { downloadBlob(generatedBlobs[0], `拼图_完整版.${ext}`); return; }
@@ -984,20 +1091,17 @@
         try {
             const bitmaps = await Promise.all(generatedBlobs.map(b => createImageBitmap(b)));
             const totalH = bitmaps.reduce((sum, bmp) => sum + bmp.height, 0); const maxW = bitmaps[0].width;
-            
-            // iOS Safari Canvas 像素限制保护
             if (maxW * totalH > (isMobile ? 16777216 : 50000000)) { 
-                showLoading(false); 
+                showLoading(false);
                 return alert('图片总像素过大，手机浏览器无法处理。\n请使用 "打包下载 (ZIP)"。'); 
             }
             
-            const canvas = document.createElement('canvas'); 
+            const canvas = document.createElement('canvas');
             canvas.width = maxW; canvas.height = totalH; 
             const ctx = canvas.getContext('2d'); 
             let y = 0;
-            
             for(let bmp of bitmaps) { 
-                if (isCancelled) break; 
+                if (isCancelled) break;
                 ctx.drawImage(bmp, 0, y); 
                 y += bmp.height; 
             }
@@ -1007,52 +1111,97 @@
                     if (isCancelled) return; 
                     downloadBlob(blob, `拼图_合并版_${new Date().getTime()}.${ext}`); 
                     showLoading(false); 
-                }, isPng ? 'image/png' : 'image/jpeg', isPng ? undefined : qVal/100); 
+                }, isPng ? 'image/png' : 'image/jpeg', isPng ? undefined : qVal/100);
             }
         } catch(e) { if(!isCancelled) alert('合并失败，请使用ZIP打包。'); showLoading(false); }
     }
-    
-    function downloadAllParts() { 
-        generatedBlobs.forEach((blob, i) => { 
-            setTimeout(() => { 
-                const ext = blob.type.includes('png') ? 'png' : 'jpg'; 
-                downloadBlob(blob, `拼图_Part_${i+1}.${ext}`); 
-            }, i * 300); 
-        }); 
+    async function downloadAllParts() { 
+        if (!generatedBlobs.length) return;
+        const confirmMsg = `即将开始逐张下载 ${generatedBlobs.length} 张图片。\n\n⚠️ 为防止浏览器拦截，每张图片之间将有 1.5 秒的间隔。\n\n请保持页面在前台，不要关闭。`;
+        if (!confirm(confirmMsg)) return;
+
+        showLoading(true, '正在启动下载队列...');
+        for (let i = 0; i < generatedBlobs.length; i++) {
+            showLoading(true, `正在下载第 ${i + 1} / ${generatedBlobs.length} 张...\n(请允许浏览器下载多个文件)`);
+            const blob = generatedBlobs[i];
+            const ext = blob.type.includes('png') ? 'png' : 'jpg'; 
+            downloadBlob(blob, `拼图_Part_${i+1}.${ext}`);
+            if (i < generatedBlobs.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            }
+        }
+        setTimeout(() => {
+            showLoading(false);
+            alert('所有图片下载请求已发送！\n如果仍有遗漏，请检查浏览器是否拦截了弹窗。');
+        }, 1000);
     }
     function downloadBlob(blob, name) { 
-        const link = document.createElement('a'); link.download = name; link.href = URL.createObjectURL(blob); link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1000); 
-    }
-    </script><script>
-    // 自动保存与贴纸预览逻辑
-    function switchMaskTab(mode) {
+        const link = document.createElement('a');
+        link.download = name; 
+        link.href = URL.createObjectURL(blob); 
+        document.body.appendChild(link);
+        link.click(); 
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(link.href), 1000); 
+    }function switchMaskTab(mode) {
         currentMaskMode = mode;
-        const lineTab = document.getElementById('tab-line'); const imgTab = document.getElementById('tab-image');
+        const lineTab = document.getElementById('tab-line'); 
+        const imgTab = document.getElementById('tab-image');
         lineTab.className = mode==='line' ? 'flex-1 py-1.5 text-xs font-medium rounded-md bg-white shadow text-black transition-all' : 'flex-1 py-1.5 text-xs font-medium rounded-md text-gray-500 transition-all';
         imgTab.className = mode==='image' ? 'flex-1 py-1.5 text-xs font-medium rounded-md bg-white shadow text-black transition-all' : 'flex-1 py-1.5 text-xs font-medium rounded-md text-gray-500 transition-all';
-        document.getElementById('mask-panel-line').style.display = mode==='line' ? 'block' : 'none'; document.getElementById('mask-panel-image').style.display = mode==='image' ? 'block' : 'none';
+        document.getElementById('mask-panel-line').style.display = mode==='line' ? 'block' : 'none'; 
+        document.getElementById('mask-panel-image').style.display = mode==='image' ? 'block' : 'none';
         if(mode === 'image') updateStickerPreview();
     }
     
     function updateStickerPreview() {
-        const canvas = document.getElementById('stickerPreviewCanvas'); const ctx = canvas.getContext('2d'); const w = canvas.width = 300; const h = canvas.height = 300; ctx.clearRect(0,0,w,h);
-        if (imagesData.length > 0) { const bgImg = new Image(); bgImg.src = imagesData[0].url; if(bgImg.complete) drawPreviewContent(ctx, w, h, bgImg); else bgImg.onload = () => drawPreviewContent(ctx, w, h, bgImg); } else { ctx.fillStyle = '#f0f0f0'; ctx.fillRect(0,0,w,h); ctx.fillStyle = '#ccc'; ctx.textAlign = 'center'; ctx.fillText('无图', w/2, h/2); }
+        const canvas = document.getElementById('stickerPreviewCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d'); 
+        const w = canvas.width = 300; const h = canvas.height = 300; 
+        ctx.clearRect(0,0,w,h);
+        if (imagesData.length > 0) { 
+            const bgImg = new Image(); 
+            bgImg.src = imagesData[0].url; 
+            if(bgImg.complete) drawPreviewContent(ctx, w, h, bgImg); 
+            else bgImg.onload = () => drawPreviewContent(ctx, w, h, bgImg); 
+        } else { 
+            ctx.fillStyle = '#f0f0f0'; ctx.fillRect(0,0,w,h); 
+            ctx.fillStyle = '#ccc'; ctx.textAlign = 'center'; ctx.fillText('无图', w/2, h/2); 
+        }
     }
     
     function drawPreviewContent(ctx, w, h, bgImg) {
         const sRatio = bgImg.width / bgImg.height; const cRatio = w / h;
-        if(sRatio > cRatio) ctx.drawImage(bgImg, (bgImg.width - bgImg.height*cRatio)/2, 0, bgImg.height*cRatio, bgImg.height, 0, 0, w, h); else ctx.drawImage(bgImg, 0, (bgImg.height - bgImg.width/cRatio)/2, bgImg.width, bgImg.width/cRatio, 0, 0, w, h);
-        if (stickerImg) { const sizePct = document.getElementById('stickerSize').value / 100; const xPct = document.getElementById('stickerX').value / 100; const yPct = document.getElementById('stickerY').value / 100; const sw = w * sizePct; const sh = sw * (stickerImg.height / stickerImg.width); ctx.drawImage(stickerImg, (w * xPct) - sw/2, (h * yPct) - sh/2, sw, sh); }
-    }
-    
-    function enlargeStickerPreview() {
-        const modal = document.getElementById('previewModal'); const header = document.getElementById('previewHeader'); const canvasEl = document.getElementById('enlargedPreviewCanvas'); const imgEl = document.getElementById('qualityPreviewImg');
+        if(sRatio > cRatio) ctx.drawImage(bgImg, (bgImg.width - bgImg.height*cRatio)/2, 0, bgImg.height*cRatio, bgImg.height, 0, 0, w, h);
+        else ctx.drawImage(bgImg, 0, (bgImg.height - bgImg.width/cRatio)/2, bgImg.width, bgImg.width/cRatio, 0, 0, w, h);
+        if (stickerImg) { 
+            const sizePct = document.getElementById('stickerSize').value / 100; 
+            const xPct = document.getElementById('stickerX').value / 100;
+            const yPct = document.getElementById('stickerY').value / 100; 
+            const sw = w * sizePct; const sh = sw * (stickerImg.height / stickerImg.width);
+            const dx = (w * xPct) - sw/2; const dy = (h * yPct) - sh/2;
+            ctx.drawImage(stickerImg, dx, dy, sw, sh);
+        }
+    }function enlargeStickerPreview() {
+        const modal = document.getElementById('previewModal');
+        const header = document.getElementById('previewHeader'); 
+        const canvasEl = document.getElementById('enlargedPreviewCanvas'); 
+        const imgEl = document.getElementById('qualityPreviewImg');
         header.classList.add('hidden'); imgEl.classList.add('hidden'); canvasEl.classList.remove('hidden');
-        const ratio = getCurrentRatio(); const baseW = 600; const baseH = baseW / ratio; canvasEl.width = baseW; canvasEl.height = baseH; const ctx = canvasEl.getContext('2d');
-        if (imagesData.length > 0) { const bgImg = new Image(); bgImg.src = imagesData[0].url; bgImg.onload = () => { drawPreviewContent(ctx, baseW, baseH, bgImg); modal.style.display = 'flex'; } } else { ctx.fillStyle = '#fff'; ctx.fillRect(0,0,baseW,baseH); modal.style.display = 'flex'; }
+        const ratio = getCurrentRatio();
+        const baseW = 600; const baseH = baseW / ratio; 
+        canvasEl.width = baseW; canvasEl.height = baseH; 
+        const ctx = canvasEl.getContext('2d');
+        if (imagesData.length > 0) { 
+            const bgImg = new Image(); 
+            bgImg.src = imagesData[0].url; 
+            bgImg.onload = () => { drawPreviewContent(ctx, baseW, baseH, bgImg); modal.style.display = 'flex'; } 
+        } else { 
+            ctx.fillStyle = '#fff'; ctx.fillRect(0,0,baseW,baseH); modal.style.display = 'flex'; 
+        }
     }
 
-    // 设置保存
     const SETTINGS_KEY = 'puzzleSettings_Ultimate_V3';
     function saveSettings() {
         const settings = { 
@@ -1066,7 +1215,9 @@
             fontPos: document.getElementById('fontPos').value, 
             fontFamily: document.getElementById('fontFamily').value,
             fontColor: document.getElementById('fontColor').value,
+            fontStrokeColor: document.getElementById('fontStrokeColor').value,
             fontShadowColor: document.getElementById('fontShadowColor').value,
+            enableShadow: document.getElementById('enableShadow').checked,
             gap: document.getElementById('gap').value,
             group_rows: document.getElementById('group_rows').value, 
             customQ_unified: document.getElementById('customQ_unified').value 
@@ -1075,28 +1226,29 @@
     }
 
     function loadSettings() {
-        const saved = localStorage.getItem(SETTINGS_KEY); if (!saved) return;
+        const saved = localStorage.getItem(SETTINGS_KEY);
+        if (!saved) return;
         try {
             const s = JSON.parse(saved);
             if(s.cols) document.getElementById('cols').value = s.cols;
             if(s.aspectRatio) { document.getElementById('aspectRatio').value = s.aspectRatio; toggleCustomRatio(); }
             if(s.customW) document.getElementById('customW').value = s.customW; 
-            if(s.customH) document.getElementById('customH').value = s.customH; 
+            if(s.customH) document.getElementById('customH').value = s.customH;
             if(s.showNum !== undefined) document.getElementById('showNum').checked = s.showNum; 
             if(s.startNumber) document.getElementById('startNumber').value = s.startNumber; 
             if(s.fontSize) document.getElementById('fontSize').value = s.fontSize; 
-            if(s.fontPos) document.getElementById('fontPos').value = s.fontPos; 
+            if(s.fontPos) document.getElementById('fontPos').value = s.fontPos;
             if(s.fontFamily) document.getElementById('fontFamily').value = s.fontFamily;
             if(s.fontColor) document.getElementById('fontColor').value = s.fontColor;
+            if(s.fontStrokeColor) document.getElementById('fontStrokeColor').value = s.fontStrokeColor;
             if(s.fontShadowColor) document.getElementById('fontShadowColor').value = s.fontShadowColor;
+            if(s.enableShadow !== undefined) document.getElementById('enableShadow').checked = s.enableShadow;
             if(s.gap) { document.getElementById('gap').value = s.gap; document.getElementById('gapValueDisplay').innerText = s.gap + 'px'; }
             if(s.group_rows) document.getElementById('group_rows').value = s.group_rows; 
             if(s.customQ_unified) document.getElementById('customQ_unified').value = s.customQ_unified;
             calculateGroupBatch(); 
         } catch(e) { console.error('读取设置失败', e); }
     }
-    
-    // 查重功能
     function checkForDuplicates() {
         const names = imagesData.map(i => i.name + i.size);
         const uniqueNames = new Set(names);
@@ -1122,109 +1274,105 @@
         refreshGridHTML(); refreshUI(); calculateGroupBatch(); checkForDuplicates();
     }
 
-    function hardReset() { const modal = document.getElementById('resetAlert'); const backdrop = document.getElementById('resetBackdrop'); const content = document.getElementById('resetModal'); modal.classList.remove('hidden'); modal.classList.add('flex'); setTimeout(() => { backdrop.classList.remove('opacity-0'); content.classList.remove('opacity-0', 'scale-110'); content.classList.remove('scale-100'); content.classList.add('scale-100'); }, 10); }
-    function closeResetAlert() { const modal = document.getElementById('resetAlert'); const backdrop = document.getElementById('resetBackdrop'); const content = document.getElementById('resetModal'); backdrop.classList.add('opacity-0'); content.classList.add('opacity-0', 'scale-110'); content.classList.remove('scale-100'); setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 200); }
+    function hardReset() { 
+        const modal = document.getElementById('resetAlert'); 
+        const backdrop = document.getElementById('resetBackdrop'); 
+        const content = document.getElementById('resetModal'); 
+        modal.classList.remove('hidden'); modal.classList.add('flex'); 
+        setTimeout(() => { 
+            backdrop.classList.remove('opacity-0'); 
+            content.classList.remove('opacity-0', 'scale-110'); 
+            content.classList.remove('scale-100'); content.classList.add('scale-100'); 
+        }, 10); 
+    }
+    function closeResetAlert() { 
+        const modal = document.getElementById('resetAlert'); 
+        const backdrop = document.getElementById('resetBackdrop'); 
+        const content = document.getElementById('resetModal'); 
+        backdrop.classList.add('opacity-0'); 
+        content.classList.add('opacity-0', 'scale-110'); content.classList.remove('scale-100'); 
+        setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 200); 
+    }
     function confirmResetAction() { localStorage.removeItem(SETTINGS_KEY); location.reload(); }
     
-    function initNotesCheck() { const isHidden = localStorage.getItem('puzzle_hide_notes_v1'); if (!isHidden) { const btn = document.getElementById('noteFloatBtn'); if(btn) btn.classList.remove('hidden'); } }
-    function showNotes() { const modal = document.getElementById('noteModal'); modal.style.display = 'flex'; const content = modal.querySelector('div'); content.classList.remove('scale-95', 'opacity-0'); content.classList.add('scale-100', 'opacity-100'); }
+        function initNotesCheck() { 
+        const isHidden = localStorage.getItem('puzzle_hide_notes_v1'); 
+        if (!isHidden) { 
+            const btn = document.getElementById('noteFloatBtn'); 
+            if(btn) btn.classList.remove('hidden'); 
+        } 
+    }
+    function showNotes() { 
+        const modal = document.getElementById('noteModal'); 
+        if(modal) {
+            modal.style.display = 'flex'; 
+            const content = modal.querySelector('div'); 
+            content.classList.remove('scale-95', 'opacity-0'); 
+            content.classList.add('scale-100', 'opacity-100');
+        }
+    }
     function closeNotes() { document.getElementById('noteModal').style.display = 'none'; }
     function permanentCloseNotes() { 
         if(confirm('确定不再显示此悬浮球吗？\n(您可以通过清除浏览器缓存来恢复)')) { 
-            localStorage.setItem('puzzle_hide_notes_v1', 'true'); 
+            localStorage.setItem('puzzle_hide_notes_v1', 'true');
             closeNotes(); 
             document.getElementById('noteFloatBtn').classList.add('hidden'); 
         } 
     }
 
-    window.addEventListener('beforeunload', function (e) { if (imagesData.length > 0) { e.preventDefault(); e.returnValue = '确定要离开吗？'; return '确定要离开吗？'; } });
-    window.addEventListener('DOMContentLoaded', () => { loadSettings(); initNotesCheck(); const inputs = document.querySelectorAll('input, select'); inputs.forEach(input => { if(input.type !== 'file') { input.addEventListener('change', saveSettings); input.addEventListener('input', saveSettings); } }); });
-</script>
-
-<div id="noteFloatBtn" class="fixed right-5 bottom-28 z-40 hidden transition-all duration-300 hover:scale-105">
-    <button onclick="showNotes()" class="bg-white/90 backdrop-blur-md text-[#007AFF] shadow-[0_4px_12px_rgba(0,0,0,0.15)] border border-white/50 font-bold text-[13px] px-4 py-2.5 rounded-full flex items-center gap-1.5 active:scale-95 transition">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-        <span>注意事项</span>
-    </button>
-</div>
-<div id="noteModal" class="modal-overlay" onclick="closeNotes()">
-    <div class="bg-white w-[85%] max-w-[320px] rounded-2xl p-6 relative shadow-2xl transform transition-all scale-100" onclick="event.stopPropagation()">
-        <div class="flex items-center gap-2 mb-4">
-        <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-[#007AFF]">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            </div>
-            <h3 class="text-[18px] font-bold text-gray-900">使用须知</h3>
-        </div>
-        <div class="text-[14px] text-gray-600 leading-relaxed mb-6 space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-            <p>1. 建议使用 <b>edg</b> 浏览器以获得最佳体验。</p>
-            <p>2.edg可以添加到手机主屏幕上使用。</p>
-            <p>3. 如果图片超过 100 张，生成过程可能会有短暂卡顿。甚至第一组拼图是全黑色，如果遇到重新拼图。</p>
-            <p>4. 多组图片导出，受浏览器影响，可能不会全部下载完图片。请尝试使用“打包下载(ZIP)”功能。</p>
-            <p>5. ❗️❗️❗️多图一定要调一下画质，不然图片太大了❗️调30%也不影响看图❗️❗️❗️</p>
-	            <p>6. 有时间老师们可以找平替的，一些原因有点想删链接了，，，₍˄·͈༝·͈˄₎◞ ̑̑</p>
-            <p>7. ❗️超过一百张图不会合并生成一张拼图， 请自行填写行列，分多张图导出❗️</p>
-        </div>
-        <div class="flex items-center gap-3 mt-2">
-            <button onclick="permanentCloseNotes()" class="text-xs text-gray-400 font-medium py-2 px-2 active:text-gray-600 transition">不再显示</button>
-            <button onclick="closeNotes()" class="flex-1 bg-[#007AFF] text-white text-[15px] font-bold py-3 rounded-xl shadow-lg shadow-blue-500/30 active:scale-95 transition">我知道了</button>
-        </div>
-    </div>
-</div><div id="updateNoticeModal" class="modal-overlay" style="z-index: 200;">
-    <div class="bg-white w-[85%] max-w-[320px] rounded-2xl p-6 relative shadow-2xl transform transition-all scale-100 animate-fade-in" onclick="event.stopPropagation()">
-        
-        <div class="flex items-center gap-2 mb-4">
-            <div class="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-[#34C759]">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>
-            </div>
-            <h3 class="text-[18px] font-bold text-gray-900">更新了一下</h3>
-        </div>
-
-        <div class="text-[14px] text-gray-600 leading-relaxed mb-6 space-y-2 max-h-[50vh] overflow-y-auto pr-1">
-            <p class="font-bold text-black">✨ </p>
-            <ul class="list-disc pl-4 space-y-1">
-                <li>添加了可以在edg浏览器安装到屏幕的，在edg浏览器的添加到手机处添加</li>
-                <li>优化了一下界面，添加了图片间隙，保存每一次数值设置
-（觉得老师们有时间可以找个平替的，一些原因有点想删链接了₍˄·͈༝·͈˄₎◞ ̑̑，，，）</li>
-<li>最新版链接:https://x9353953-source.github.io/ikko/<li>
-               
-                
-            </ul>
-        </div>
-
-        <div class="flex items-center gap-3 mt-2">
-            <button onclick="dontShowUpdateAgain()" class="text-xs text-gray-400 font-medium py-2 px-2 active:text-gray-600 transition">不再提示</button>
-            <button onclick="closeUpdateModal()" class="flex-1 bg-[#34C759] text-white text-[15px] font-bold py-3 rounded-xl shadow-lg shadow-green-500/30 active:scale-95 transition">我知道了</button>
-        </div>
-    </div>
-</div>
-
-<script>
-    // 定义版本号，如果下次还有更新想再次弹出，只需修改这个字符串（例如改成 'update_notice_v2'）
-    const UPDATE_KEY = 'puzzle_update_notice_v1';
-
-    // 页面加载完成后检查
-    window.addEventListener('load', () => {
+    const UPDATE_KEY = 'puzzle_update_notice_v3';
+    function checkUpdateNotice() {
         const hasRead = localStorage.getItem(UPDATE_KEY);
-        // 如果没有记录（说明是第一次或者是清空缓存后），则显示弹窗
         if (!hasRead) {
             setTimeout(() => {
                 const modal = document.getElementById('updateNoticeModal');
-                modal.style.display = 'flex';
-            }, 500); // 延迟0.5秒弹出，体验更好
+                if(modal) modal.style.display = 'flex';
+            }, 500);
         }
+    }
+    function closeUpdateModal() { document.getElementById('updateNoticeModal').style.display = 'none'; }
+    function dontShowUpdateAgain() { localStorage.setItem(UPDATE_KEY, 'true'); closeUpdateModal(); }
+
+    window.addEventListener('beforeunload', function (e) { if (imagesData.length > 0) { e.preventDefault(); e.returnValue = '确定要离开吗？'; return '确定要离开吗？'; } });
+    
+    window.addEventListener('DOMContentLoaded', () => { 
+        loadSettings(); 
+        initNotesCheck(); 
+        checkUpdateNotice(); 
+        const inputs = document.querySelectorAll('input, select'); 
+        inputs.forEach(input => { 
+            if(input.type !== 'file') { 
+                input.addEventListener('change', saveSettings); 
+                input.addEventListener('input', saveSettings); 
+            } 
+        }); 
     });
+</script><div id="permissionFixBtn" style="position:fixed; top:70px; right:20px; z-index:999;">
+    <button onclick="triggerBrowserPermission()" style="background:#007AFF; color:white; padding:8px 12px; border-radius:20px; font-size:12px; font-weight:bold; box-shadow:0 2px 10px rgba(0,0,0,0.2);">
+        ⚠️ 点我开启批量下载权限
+    </button>
+</div>
 
-    // 关闭弹窗（仅本次关闭）
-    function closeUpdateModal() {
-        const modal = document.getElementById('updateNoticeModal');
-        modal.style.display = 'none';
-    }
-
-    // 不再提示（永久关闭，直到你修改版本号）
-    function dontShowUpdateAgain() {
-        localStorage.setItem(UPDATE_KEY, 'true');
-        closeUpdateModal();
-    }
+<script>
+function triggerBrowserPermission() {
+    const a = document.createElement('a');
+    const b = document.createElement('a');
+    const blob = new Blob(["permission_check"], {type: "text/plain"});
+    const url = URL.createObjectURL(blob);
+    a.href = url; a.download = "权限检测_1（都点取消即可）.txt";
+    b.href = url; b.download = "权限检测_2.txt";
+    document.body.appendChild(a); document.body.appendChild(b);
+    a.click();
+    setTimeout(() => {
+        b.click();
+        alert('请留意浏览器地址栏或顶部！\n\n如果出现【已拦截】或【允许下载多个文件】，请务必点击【允许】方便逐图导出\n\n允许后，再次点击“逐张下载”即可飞速下载。');
+        setTimeout(() => {
+            document.body.removeChild(a); document.body.removeChild(b);
+            URL.revokeObjectURL(url);
+            document.getElementById('permissionFixBtn').style.display = 'none'; 
+        }, 1000);
+    }, 100);
+}
 </script>
 </body>
 </html>
